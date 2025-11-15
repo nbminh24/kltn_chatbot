@@ -1,0 +1,35 @@
+# Rasa Endpoints Configuration
+
+# Action server endpoint
+action_endpoint:
+  url: "http://localhost:5055/webhook"
+
+# Tracker store - using InMemoryTrackerStore for development
+# For production, switch to PostgreSQL or Redis
+tracker_store:
+  type: InMemoryTrackerStore
+
+# Uncomment for production with PostgreSQL
+# tracker_store:
+#   type: SQL
+#   dialect: "postgresql"
+#   url: "localhost"
+#   port: 5432
+#   db: "rasa_tracker"
+#   username: "rasa"
+#   password: "<your-password>"
+#   login_db: "rasa_tracker"
+
+# Event broker - uncomment for production
+# event_broker:
+#   type: sql
+#   dialect: "postgresql"
+#   url: "localhost"
+#   port: 5432
+#   db: "rasa_events"
+#   username: "rasa"
+#   password: "<your-password>"
+
+# NLG server - uncomment if using external NLG
+# nlg:
+#   url: "http://localhost:5056/nlg"

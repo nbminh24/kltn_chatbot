@@ -1,0 +1,37 @@
+# KLTN E-commerce Chatbot Dependencies
+# Python Version: 3.8.10
+
+# Rasa Framework
+rasa==3.6.20
+
+# Skip psycopg2 for development (only needed for production PostgreSQL)
+# Install manually with --no-deps if needed later
+
+# HTTP Requests
+requests==2.31.0
+urllib3==1.26.18
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Google Gemini API (install separately if needed)
+# google-generativeai
+
+# Data Processing (version compatible with Rasa 3.6.20)
+pandas>=1.5.0
+numpy>=1.19.2,<1.24
+
+# Date/Time Handling
+python-dateutil==2.8.2
+
+# Async Support
+aiohttp==3.9.1
+
+# Logging
+colorlog==6.8.0
+
+# Type Checking (Development)
+typing-extensions==4.9.0
+
+# Security
+cryptography==41.0.7

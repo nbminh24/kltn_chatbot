@@ -1,0 +1,194 @@
+version: "3.1"
+
+stories:
+# ============================================================================
+# 1. HAPPY PATH STORIES - Product Search
+# ============================================================================
+- story: User searches for product and asks price
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_product
+    entities:
+    - product_type: "laptop"
+  - action: action_search_products
+  - intent: ask_product_price
+    entities:
+    - product_name: "MacBook Pro"
+  - action: action_get_product_price
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: User checks product availability
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: check_product_availability
+    entities:
+    - product_name: "iPhone 15"
+  - action: action_check_availability
+  - intent: affirm
+  - action: utter_help_order
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: User asks for product details
+  steps:
+  - intent: search_product
+    entities:
+    - product_type: "headphones"
+  - action: action_search_products
+  - intent: ask_product_details
+    entities:
+    - product_name: "AirPods Pro"
+  - action: action_get_product_details
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+# ============================================================================
+# 2. ORDER TRACKING STORIES
+# ============================================================================
+- story: User tracks order with order number
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: track_order
+    entities:
+    - order_number: "#12345"
+  - action: action_track_order
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: User tracks order without order number
+  steps:
+  - intent: track_order
+  - action: utter_ask_order_number
+  - intent: inform
+    entities:
+    - order_number: "#67890"
+  - action: action_track_order
+
+- story: User wants to cancel order
+  steps:
+  - intent: cancel_order
+    entities:
+    - order_number: "#12345"
+  - action: action_cancel_order_request
+  - intent: affirm
+  - action: utter_order_cancellation_confirmed
+
+# ============================================================================
+# 3. FAQ & POLICIES STORIES
+# ============================================================================
+- story: User asks about shipping policy
+  steps:
+  - intent: ask_shipping_policy
+  - action: action_get_shipping_policy
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: User asks about return policy
+  steps:
+  - intent: ask_return_policy
+  - action: action_get_return_policy
+  - intent: ask_warranty
+  - action: action_get_warranty_policy
+
+- story: User asks about payment methods
+  steps:
+  - intent: ask_payment_methods
+  - action: action_get_payment_methods
+  - intent: affirm
+  - action: utter_help_order
+
+# ============================================================================
+# 4. RECOMMENDATION STORIES
+# ============================================================================
+- story: User asks for product recommendation
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: ask_recommendation
+  - action: action_recommend_products
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: User compares two products
+  steps:
+  - intent: compare_products
+    entities:
+    - product_name: "iPhone 15"
+    - product_name: "Samsung S24"
+  - action: action_compare_products
+  - intent: affirm
+  - action: utter_help_order
+
+# ============================================================================
+# 5. SUPPORT & FALLBACK STORIES
+# ============================================================================
+- story: User explicitly asks for human support
+  steps:
+  - intent: create_support_ticket
+  - action: action_create_support_ticket
+  - action: utter_support_ticket_created
+
+- story: User asks contact information
+  steps:
+  - intent: ask_contact_info
+  - action: utter_contact_info
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+# ============================================================================
+# 6. COMPLEX INTERACTIVE STORIES
+# ============================================================================
+- story: Complete shopping journey
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_product
+    entities:
+    - product_type: "laptop"
+  - action: action_search_products
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: check_product_availability
+  - action: action_check_availability
+  - intent: ask_shipping_policy
+  - action: action_get_shipping_policy
+  - intent: thank_you
+  - action: utter_you_are_welcome
+  - intent: goodbye
+  - action: utter_goodbye
+
+- story: User needs help after unsuccessful search
+  steps:
+  - intent: search_product
+  - action: action_search_products
+  - slot_was_set:
+    - products_found: false
+  - action: utter_no_products_found
+  - intent: create_support_ticket
+  - action: action_create_support_ticket
+  - action: utter_support_ticket_created
+
+# ============================================================================
+# 7. CHITCHAT STORIES
+# ============================================================================
+- story: Bot challenge and continue
+  steps:
+  - intent: bot_challenge
+  - action: utter_i_am_bot
+  - intent: search_product
+  - action: action_search_products
+
+- story: Simple greeting and goodbye
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: goodbye
+  - action: utter_goodbye

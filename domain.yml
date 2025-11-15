@@ -1,0 +1,318 @@
+version: "3.1"
+
+# ============================================================================
+# INTENTS - All possible user intentions
+# ============================================================================
+intents:
+  # Greetings & Farewells
+  - greet
+  - goodbye
+  - thank_you
+  - affirm
+  - deny
+  
+  # Product Search & Inquiry
+  - search_product
+  - ask_product_price
+  - check_product_availability
+  - ask_product_details
+  
+  # Order Management
+  - track_order
+  - cancel_order
+  - modify_order
+  
+  # FAQ & Policies
+  - ask_shipping_policy
+  - ask_return_policy
+  - ask_payment_methods
+  - ask_warranty
+  
+  # Recommendations
+  - ask_recommendation
+  - compare_products
+  
+  # Support
+  - create_support_ticket
+  - ask_contact_info
+  
+  # Chitchat
+  - bot_challenge
+  
+  # Fashion E-commerce (NEW)
+  - ask_size_guide
+  - ask_material
+  - ask_available_colors
+  - ask_promotions
+  - ask_delivery_time
+  - ask_fit_style
+  - ask_styling_advice
+  - search_by_occasion
+  - compare_product_details
+  - ask_reviews
+
+  # Advanced E-commerce (NEW)
+  - ask_sizing_advice
+  - ask_product_care
+  - report_order_error
+  - request_exchange_item
+  - report_quality_issue
+  - request_policy_exception
+  - request_stock_notification_conditional
+  - check_discount_logic
+  - ask_product_comparison_contextual
+  
+  # System
+  - nlu_fallback
+  - inform
+
+# ============================================================================
+# ENTITIES - Information extracted from user messages
+# ============================================================================
+entities:
+  - product_name
+  - product_type
+  - order_number
+  - size
+  - color
+  - brand
+  - category
+  - price_range
+  - occasion
+  - style
+  - material
+  - fit_type
+  - body_type
+  - fit_preference
+  - height
+  - weight
+  - care_property
+  - error_type
+  - quantity
+  - product_to_return
+  - product_to_get
+  - reason
+  - defect_description
+  - policy_type
+  - price_condition
+  - discount_code
+  - context
+
+# ============================================================================
+# SLOTS - Variables to store conversation context
+# ============================================================================
+slots:
+  # Product-related slots
+  products_found:
+    type: bool
+    initial_value: false
+    influence_conversation: true
+    mappings:
+    - type: custom
+  
+  last_search_query:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  last_products:
+    type: list
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  last_product:
+    type: any
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # Order-related slots
+  last_order:
+    type: any
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  user_jwt_token:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # User preferences
+  preferred_category:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # Fallback tracking
+  fallback_count:
+    type: float
+    initial_value: 0
+    influence_conversation: true
+    mappings:
+    - type: custom
+
+# ============================================================================
+# RESPONSES - Template responses from the bot
+# ============================================================================
+responses:
+  # Greetings & Farewells
+  utter_greet:
+  - text: "Hello! 👋 Welcome to our store. How can I assist you today?"
+  - text: "Hi there! I'm here to help you with products, orders, and any questions you have. What can I do for you?"
+  - text: "Welcome! I'm your shopping assistant. Feel free to ask about products, orders, or policies."
+  
+  utter_goodbye:
+  - text: "Goodbye! Have a great day! 😊"
+  - text: "Thanks for chatting! Feel free to come back anytime. Take care!"
+  - text: "See you later! Don't hesitate to reach out if you need anything else."
+  
+  utter_you_are_welcome:
+  - text: "You're welcome! Anything else I can help with?"
+  - text: "Happy to help! Is there anything else you'd like to know?"
+  - text: "My pleasure! Let me know if you need anything else."
+  
+  # Bot Identity
+  utter_i_am_bot:
+  - text: "I'm an AI shopping assistant here to help you find products, track orders, and answer your questions!"
+  - text: "Yes, I'm a bot! But I'm here to make your shopping experience smooth and easy. How can I help?"
+  
+  # Product-related responses
+  utter_no_products_found:
+  - text: "I couldn't find any products matching your search. Would you like to try different keywords or browse by category?"
+  - text: "Sorry, no matches found. Could you describe what you're looking for in different words?"
+  
+  utter_ask_product_specification:
+  - text: "What specific features or specifications are you looking for?"
+  - text: "Could you tell me more about what you need? Size, color, brand?"
+  
+  utter_help_order:
+  - text: "Ready to order? I can guide you through the checkout process or answer any questions first!"
+  - text: "Would you like to proceed with your order, or do you have more questions?"
+  
+  # Order-related responses
+  utter_ask_order_number:
+  - text: "Could you please provide your order number? It usually starts with '#' followed by numbers."
+  - text: "What's your order number? You can find it in your confirmation email."
+  
+  utter_order_cancellation_confirmed:
+  - text: "Your cancellation request has been submitted. Our team will process it within 24 hours."
+  
+  # Policy responses (fallback if API fails)
+  utter_default_shipping_policy:
+  - text: "We offer free standard shipping on orders over $50. Standard delivery takes 5-7 business days. Express shipping ($15) takes 2-3 days."
+  
+  utter_default_return_policy:
+  - text: "Returns are accepted within 30 days of purchase. Items must be unused in original packaging. Refunds processed in 5-7 business days."
+  
+  # Support responses
+  utter_contact_info:
+  - text: "You can reach us at:\n📧 Email: support@store.com\n📞 Phone: 1-800-SHOP-NOW\n💬 Live chat available 9 AM - 9 PM"
+  - text: "Contact our support team:\n• Email: help@store.com\n• Phone: +1 (800) 123-4567\n• Chat: Available on our website"
+  
+  # Fashion E-commerce Responses (NEW)
+  utter_size_guide:
+  - text: "📏 Bảng size của shop:\n• S: 50-55kg, 1m60-1m65\n• M: 55-65kg, 1m65-1m72\n• L: 65-75kg, 1m72-1m78\n• XL: 75-85kg, 1m78+\n\nBạn muốn mình tư vấn cụ thể hơn không? 😊"
+  - text: "Để chọn size phù hợp:\n1️⃣ Đo chiều cao & cân nặng\n2️⃣ Tham khảo bảng size\n3️⃣ Nếu giữa 2 size, chọn size lớn hơn\n\nBạn cần tư vấn size cụ thể không?"
+  
+  utter_material_info:
+  - text: "Sản phẩm này làm từ chất liệu cao cấp, thoáng mát và bền đẹp. Bạn muốn biết về sản phẩm cụ thể nào nhé?"
+  - text: "Shop có nhiều chất liệu: Cotton 100%, Polyester, Blend... Bạn đang xem sản phẩm nào để mình check chi tiết cho bạn? 👕"
+  
+  utter_colors_available:
+  - text: "Sản phẩm này có các màu: Đen, Trắng, Xám, Navy. Bạn thích màu nào nhất? 🎨"
+  - text: "Màu nào còn hàng nhỉ... Để mình check cho bạn! Bạn đang xem sản phẩm nào vậy?"
+  
+  utter_promotions_info:
+  - text: "🎉 Ưu đãi hiện tại:\n• Giảm 20% cho đơn từ 500k\n• Freeship đơn từ 300k\n• Tích điểm đổi quà\n\nNhập mã: FASHION20 khi thanh toán nhé!"
+  - text: "Đang có sale hot đây bạn! 🔥\n- Giảm đến 30% một số items\n- Combo 3 món giảm 25%\n- Freeship toàn quốc\n\nMua ngay kẻo hết! 😊"
+  
+  utter_delivery_info:
+  - text: "⏰ Thời gian giao hàng:\n• Nội thành: 1-2 ngày\n• Ngoại thành: 2-4 ngày\n• Tỉnh: 3-5 ngày\n\nShop ship cực nhanh luôn nhé! 🚚"
+  - text: "Giao hàng nhanh lắm bạn ơi! Thường 2-3 ngày là có hàng rồi. Đặt hôm nay, mặc ngay cuối tuần! 😎"
+  
+  utter_fit_info:
+  - text: "Form áo này là regular fit - vừa vặn, không quá rộng hay ôm. Phù hợp mọi dáng người nhé! 👔"
+  - text: "Shop có đầy đủ form: Slim fit (ôm), Regular (vừa), Oversize (rộng). Bạn thích style nào?"
+  
+  utter_styling_advice:
+  - text: "✨ Gợi ý phối đồ:\n• Áo polo + quần kaki = Lịch sự đi làm\n• Áo thun + jean = Năng động dạo phố\n• Áo sơ mi + quần âu = Sang trọng đi event\n\nBạn muốn outfit cho dịp nào?"
+  - text: "Món này mình recommend phối với:\n🔹 Quần jeans đen/xanh navy\n🔹 Giày sneaker trắng\n🔹 Thêm đồng hồ/vòng tay cho trendy!\n\nBạn có muốn xem outfit mẫu không? 📸"
+  
+  utter_occasion_suggestions:
+  - text: "Đi làm thì nên chọn:\n👔 Áo polo, sơ mi\n👖 Quần kaki, âu\n👞 Giày da/loafer\n\nMình có thể gợi ý cụ thể hơn nếu bạn cần!"
+  - text: "Outfit theo dịp:\n• Đi làm: Smart casual\n• Đi chơi: Streetwear\n• Date: Neat & clean\n• Du lịch: Thoải mái\n\nBạn cần outfit cho dịp nào nào?"
+  
+  utter_product_comparison:
+  - text: "Để mình so sánh 2 sản phẩm cho bạn! Bạn đang phân vân giữa món nào và món nào?"
+  - text: "Okay! Cho mình biết 2 sản phẩm bạn muốn so sánh để mình phân tích giá/chất lượng/style cho bạn nhé!"
+  
+  utter_reviews_info:
+  - text: "Sản phẩm này được đánh giá rất cao! ⭐⭐⭐⭐⭐\n• Chất liệu tốt\n• Form đẹp\n• Giá hợp lý\n\nNhiều bạn đã mua và rất hài lòng đấy!"
+  - text: "Review từ khách hàng:\n💯 Chất lượng tốt\n💯 Đúng size\n💯 Màu đẹp như hình\n\nBạn cứ yên tâm order nhé! 😊"
+  
+  # Support responses
+  utter_support_ticket_created:
+  - text: "Đã tạo ticket hỗ trợ thành công! 🎫\nTeam support sẽ liên hệ bạn trong 24h. Cảm ơn bạn đã kiên nhẫn!"
+  - text: "Ticket của bạn đã được ghi nhận! ✅\nBộ phận hỗ trợ sẽ xử lý và phản hồi sớm nhất. Xin cảm ơn!"
+  
+  # Clarification responses
+  utter_ask_rephrase:
+  - text: "I'm not sure I understood that correctly. Could you rephrase your question?"
+  - text: "Could you explain that in different words? I want to make sure I help you correctly."
+  
+  utter_default:
+  - text: "I can help you with product searches, order tracking, shipping policies, and more. What would you like to know?"
+
+# ============================================================================
+# ACTIONS - Custom actions implemented in actions.py
+# ============================================================================
+actions:
+  # Product actions
+  - action_search_products
+  - action_get_product_price
+  - action_check_availability
+  - action_get_product_details
+  
+  # Order actions
+  - action_track_order
+  - action_cancel_order_request
+  
+  # Policy actions
+  - action_get_shipping_policy
+  - action_get_return_policy
+  - action_get_payment_methods
+  - action_get_warranty_policy
+  
+  # Recommendation actions
+  - action_recommend_products
+  - action_compare_products
+  
+  # Support actions
+  - action_create_support_ticket
+  - action_fallback
+  
+  # Utility actions
+  - action_default_ask_affirmation
+  
+  # Advanced e-commerce actions (NEW)
+  - action_get_sizing_advice
+  - action_get_styling_advice
+  - action_get_product_care
+  - action_report_order_error
+  - action_request_return_or_exchange
+  - action_report_quality_issue
+  - action_handle_policy_exception
+  - action_set_stock_notification
+  - action_check_discount
+
+# ============================================================================
+# SESSION CONFIGURATION
+# ============================================================================
+session_config:
+  session_expiration_time: 60  # 60 minutes
+  carry_over_slots_to_new_session: true

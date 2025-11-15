@@ -1,0 +1,182 @@
+version: "3.1"
+
+rules:
+# ============================================================================
+# 1. GREETING & FAREWELL RULES
+# ============================================================================
+- rule: Greet user
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Say goodbye
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+# ============================================================================
+# 2. CHITCHAT RULES
+# ============================================================================
+- rule: Respond to thanks
+  steps:
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- rule: Respond to bot challenge
+  steps:
+  - intent: bot_challenge
+  - action: utter_i_am_bot
+
+# ============================================================================
+# 3. FALLBACK RULES
+# ============================================================================
+- rule: Fallback rule - low confidence
+  steps:
+  - intent: nlu_fallback
+  - action: action_fallback
+
+# Multi-turn fallback handling is in stories.yml
+# Rules must be single-turn only
+
+# ============================================================================
+# 4. DIRECT ACTION RULES (Single-turn interactions)
+# ============================================================================
+- rule: Ask contact information
+  steps:
+  - intent: ask_contact_info
+  - action: utter_contact_info
+
+- rule: Ask shipping policy
+  steps:
+  - intent: ask_shipping_policy
+  - action: action_get_shipping_policy
+
+- rule: Ask return policy
+  steps:
+  - intent: ask_return_policy
+  - action: action_get_return_policy
+
+- rule: Ask payment methods
+  steps:
+  - intent: ask_payment_methods
+  - action: action_get_payment_methods
+
+- rule: Ask warranty information
+  steps:
+  - intent: ask_warranty
+  - action: action_get_warranty_policy
+
+# ============================================================================
+# 5. SUPPORT TICKET RULES
+# ============================================================================
+- rule: Create support ticket on explicit request
+  steps:
+  - intent: create_support_ticket
+  - action: action_create_support_ticket
+  - action: utter_support_ticket_created
+
+# ============================================================================
+# 6. FASHION E-COMMERCE RULES (Single-turn Q&A)
+# ============================================================================
+- rule: Provide size guide
+  steps:
+  - intent: ask_size_guide
+  - action: utter_size_guide
+
+- rule: Provide material information
+  steps:
+  - intent: ask_material
+  - action: utter_material_info
+
+- rule: Show available colors
+  steps:
+  - intent: ask_available_colors
+  - action: utter_colors_available
+
+- rule: Show promotions
+  steps:
+  - intent: ask_promotions
+  - action: utter_promotions_info
+
+- rule: Provide delivery time
+  steps:
+  - intent: ask_delivery_time
+  - action: utter_delivery_info
+
+- rule: Provide fit information
+  steps:
+  - intent: ask_fit_style
+  - action: utter_fit_info
+
+- rule: Provide styling advice
+  steps:
+  - intent: ask_styling_advice
+  - action: utter_styling_advice
+
+- rule: Show reviews
+  steps:
+  - intent: ask_reviews
+  - action: utter_reviews_info
+
+# ============================================================================
+# 7. ADVANCED E-COMMERCE RULES (Single-turn triggers)
+# ============================================================================
+- rule: Get sizing advice
+  steps:
+  - intent: ask_sizing_advice
+  - action: action_get_sizing_advice
+
+- rule: Get product care info
+  steps:
+  - intent: ask_product_care
+  - action: action_get_product_care
+
+- rule: Report order error
+  steps:
+  - intent: report_order_error
+  - action: action_report_order_error
+
+- rule: Request return or exchange
+  steps:
+  - intent: request_exchange_item
+  - action: action_request_return_or_exchange
+
+- rule: Report quality issue
+  steps:
+  - intent: report_quality_issue
+  - action: action_report_quality_issue
+
+- rule: Handle policy exception request
+  steps:
+  - intent: request_policy_exception
+  - action: action_handle_policy_exception
+
+- rule: Set stock notification
+  steps:
+  - intent: request_stock_notification_conditional
+  - action: action_set_stock_notification
+
+- rule: Check discount logic
+  steps:
+  - intent: check_discount_logic
+  - action: action_check_discount
+
+- rule: Contextual product comparison
+  steps:
+  - intent: ask_product_comparison_contextual
+  - action: action_compare_products
+
+# ============================================================================
+# 8. ACTIVATION RULES (Always listen for these)
+# ============================================================================
+- rule: Always respond to greet in the middle of conversation
+  conversation_start: false
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Always respond to goodbye in the middle of conversation
+  conversation_start: false
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
