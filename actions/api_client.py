@@ -21,11 +21,14 @@ class BackendAPIClient:
     def __init__(self):
         self.base_url = os.getenv("BACKEND_URL", "http://localhost:3001")
         self.api_key = os.getenv("INTERNAL_API_KEY", "")
-        self.timeout = 10  # seconds
+        self.timeout = 5  # seconds - reduced for faster response
+        
+        # Create session with connection pooling for better performance
+        self.session = requests.Session()
         
         # Default headers for all requests
         self.headers = {
-            "x-api-key": self.api_key,
+            "X-Internal-Api-Key": self.api_key,
             "Content-Type": "application/json"
         }
         
@@ -60,7 +63,7 @@ class BackendAPIClient:
             headers["Authorization"] = f"Bearer {auth_token}"
         
         try:
-            response = requests.request(
+            response = self.session.request(
                 method=method,
                 url=url,
                 json=data,
@@ -89,43 +92,52 @@ class BackendAPIClient:
     # PRODUCT ENDPOINTS
     # ========================================================================
     
-    def search_products(self, query: str, limit: int = 10) -> Dict[str, Any]:
+    def search_products(self, query: str, limit: int = 10, category: str = None) -> Dict[str, Any]:
         """
         Search for products by name or description
+        Public API - no authentication required
         
         Args:
             query: Search query
             limit: Maximum number of results
+            category: Category slug filter (optional)
             
         Returns:
-            List of products matching the query
+            Dict with 'products' list and 'count'
         """
-        logger.info(f"Searching products with query: {query}")
+        logger.info(f"Searching products with query: {query}, category: {category}")
         
         params = {
             "search": query,
             "limit": limit
         }
+        if category:
+            params["category_slug"] = category
         
-        return self._make_request("GET", "/internal/products", params=params)
+        # Public endpoint - doesn't need internal API key
+        return self._make_request("GET", "/products", params=params)
     
     def get_product_by_id(self, product_id: str) -> Dict[str, Any]:
-        """Get detailed information about a specific product"""
+        """Get detailed information about a specific product - Public API"""
         logger.info(f"Fetching product details for ID: {product_id}")
-        return self._make_request("GET", f"/internal/products/{product_id}")
+        return self._make_request("GET", f"/products/id/{product_id}")
     
-    def check_product_availability(self, product_id: str) -> Dict[str, Any]:
-        """Check if a product is in stock"""
-        logger.info(f"Checking availability for product ID: {product_id}")
-        result = self._make_request("GET", f"/internal/products/{product_id}")
+    def check_product_availability(self, product_name: str = None, size: str = None, color: str = None) -> Dict[str, Any]:
+        """
+        Check product availability with filters - Public API
+        Endpoint: GET /products/availability?name={}&size={}&color={}
+        """
+        logger.info(f"Checking availability: name={product_name}, size={size}, color={color}")
         
-        if not result.get("error"):
-            return {
-                "product_id": product_id,
-                "available": result.get("stock", 0) > 0,
-                "stock": result.get("stock", 0)
-            }
-        return result
+        params = {}
+        if product_name:
+            params["name"] = product_name
+        if size:
+            params["size"] = size
+        if color:
+            params["color"] = color
+        
+        return self._make_request("GET", "/products/availability", params=params)
     
     # ========================================================================
     # FAQ & POLICY ENDPOINTS
@@ -133,7 +145,7 @@ class BackendAPIClient:
     
     def get_page_content(self, slug: str) -> Dict[str, Any]:
         """
-        Get content from CMS pages (FAQ, policies, etc.)
+        Get content from CMS pages (FAQ, policies, etc.) - Public API
         
         Args:
             slug: Page slug (e.g., 'shipping-policy', 'return-policy')
@@ -142,7 +154,7 @@ class BackendAPIClient:
             Page content
         """
         logger.info(f"Fetching page content for slug: {slug}")
-        return self._make_request("GET", f"/internal/pages/{slug}")
+        return self._make_request("GET", f"/pages/{slug}")
     
     def get_shipping_policy(self) -> Dict[str, Any]:
         """Get shipping policy content"""
@@ -164,28 +176,31 @@ class BackendAPIClient:
     # ORDER ENDPOINTS (Requires JWT)
     # ========================================================================
     
-    def get_order_details(self, order_id: str, auth_token: str) -> Dict[str, Any]:
+    def get_order_details(self, order_id: str, auth_token: str = None) -> Dict[str, Any]:
         """
-        Get order details for a specific order
-        Requires user authentication
+        Get order details for a specific order - Public track endpoint
+        Can use order tracking: GET /orders/track?order_id={}
         
         Args:
             order_id: Order ID or order number
-            auth_token: User's JWT token
+            auth_token: Optional user's JWT token
             
         Returns:
             Order details
         """
         logger.info(f"Fetching order details for order: {order_id}")
+        params = {"order_id": order_id}
         return self._make_request(
             "GET", 
-            f"/internal/orders/{order_id}", 
+            "/orders/track", 
+            params=params,
             auth_token=auth_token
         )
     
     def get_user_orders(self, auth_token: str, limit: int = 10) -> Dict[str, Any]:
         """
-        Get all orders for authenticated user
+        Get all orders for authenticated user.
+        Backend endpoint: GET /orders (with JWT)
         
         Args:
             auth_token: User's JWT token
@@ -198,13 +213,57 @@ class BackendAPIClient:
         params = {"limit": limit}
         return self._make_request(
             "GET", 
-            "/internal/orders", 
+            "/orders", 
             params=params,
             auth_token=auth_token
         )
     
+    def search_purchased_products(self, product_name: str, auth_token: str) -> Dict[str, Any]:
+        """
+        Search products from user's purchase history.
+        Better UX: users ask about products they bought, not order IDs.
+        Real endpoint: GET /internal/orders (filter by product in results)
+        
+        Args:
+            product_name: Product name to search for
+            auth_token: User's JWT token
+            
+        Returns:
+            Orders containing the product
+        """
+        logger.info(f"Searching purchased products: {product_name}")
+        
+        # Get user orders
+        result = self.get_user_orders(auth_token, limit=50)
+        
+        if result.get("error"):
+            return result
+        
+        orders = result.get("data", [])
+        matching_orders = []
+        
+        # Filter orders containing the product
+        for order in orders:
+            items = order.get("items", [])
+            for item in items:
+                item_name = item.get("product_name", "").lower()
+                if product_name.lower() in item_name:
+                    matching_orders.append({
+                        "order_id": order.get("id"),
+                        "order_number": order.get("order_number"),
+                        "product": item.get("product_name"),
+                        "status": order.get("status"),
+                        "date": order.get("created_at")
+                    })
+                    break
+        
+        return {
+            "data": matching_orders,
+            "count": len(matching_orders)
+        }
+    
     # ========================================================================
-    # SUPPORT TICKET ENDPOINTS
+    # SUPPORT TICKET ENDPOINTS  
     # ========================================================================
     
     def create_support_ticket(
@@ -212,17 +271,22 @@ class BackendAPIClient:
         subject: str, 
         message: str, 
         user_message: str,
-        conversation_history: Optional[List[Dict]] = None
+        conversation_history: Optional[List[Dict]] = None,
+        auth_token: Optional[str] = None,
+        customer_email: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Create a support ticket when chatbot cannot help
-        This is the fallback mechanism
+        Create a support ticket when chatbot cannot help.
+        Backend handles this through admin module.
+        Note: Endpoint might need to be confirmed with backend team.
         
         Args:
             subject: Ticket subject
-            message: Ticket message
+            message: Ticket message/description
             user_message: Original user message that triggered fallback
             conversation_history: Recent conversation context
+            auth_token: Optional JWT token if user is authenticated
+            customer_email: Optional email if guest user
             
         Returns:
             Ticket creation response
@@ -232,17 +296,22 @@ class BackendAPIClient:
         data = {
             "subject": subject,
             "message": message,
-            "original_query": user_message,
-            "conversation_history": conversation_history or [],
-            "source": "chatbot_fallback"
+            "source": "chatbot",
+            "priority": "normal"
         }
         
-        return self._make_request("POST", "/support/tickets", data=data)
+        if customer_email:
+            data["customer_email"] = customer_email
+        
+        # Note: Using generic /support-tickets endpoint
+        # Backend team should confirm the exact endpoint
+        return self._make_request("POST", "/support-tickets", data=data, auth_token=auth_token)
     
     def log_fallback(self, user_message: str, intent: str, confidence: float) -> Dict[str, Any]:
         """
         Log messages that chatbot couldn't understand
         Helps improve training data
+        Note: This endpoint may not exist yet - optional feature
         
         Args:
             user_message: The message user sent
@@ -258,73 +327,213 @@ class BackendAPIClient:
             "message": user_message,
             "intent": intent,
             "confidence": confidence,
-            "timestamp": None  # Backend will add timestamp
+            "source": "chatbot_fallback"
         }
         
-        return self._make_request("POST", "/internal/chatbot/log-fallback", data=data)
+        # This endpoint might need to be created by backend team
+        return self._make_request("POST", "/api/chatbot/log-fallback", data=data)
 
     # ========================================================================
-    # ADVANCED BUSINESS LOGIC ENDPOINTS (MOCKED)
+    # CHATBOT-SPECIFIC ENDPOINTS (Internal APIs - Require X-Internal-Api-Key)
     # ========================================================================
-
+    
+    def add_to_cart(self, customer_id: int, variant_id: int, quantity: int = 1) -> Dict[str, Any]:
+        """
+        Add item to cart using internal chatbot API
+        Endpoint: POST /api/chatbot/cart/add
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            customer_id: Customer ID
+            variant_id: Product variant ID
+            quantity: Quantity to add
+            
+        Returns:
+            Cart update response
+        """
+        logger.info(f"Adding to cart: customer={customer_id}, variant={variant_id}, qty={quantity}")
+        
+        data = {
+            "customer_id": customer_id,
+            "variant_id": variant_id,
+            "quantity": quantity
+        }
+        
+        return self._make_request("POST", "/api/chatbot/cart/add", data=data)
+    
+    def add_to_wishlist(self, customer_id: int, variant_id: int) -> Dict[str, Any]:
+        """
+        Add item to wishlist using internal chatbot API
+        Endpoint: POST /api/chatbot/wishlist/add
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            customer_id: Customer ID
+            variant_id: Product variant ID
+            
+        Returns:
+            Wishlist update response
+        """
+        logger.info(f"Adding to wishlist: customer={customer_id}, variant={variant_id}")
+        
+        data = {
+            "customer_id": customer_id,
+            "variant_id": variant_id
+        }
+        
+        return self._make_request("POST", "/api/chatbot/wishlist/add", data=data)
+    
+    def cancel_order(self, order_id: int, customer_id: int) -> Dict[str, Any]:
+        """
+        Cancel order using internal chatbot API
+        Endpoint: POST /api/chatbot/orders/:id/cancel
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            order_id: Order ID to cancel
+            customer_id: Customer ID (for verification)
+            
+        Returns:
+            Order cancellation response
+        """
+        logger.info(f"Cancelling order: order_id={order_id}, customer_id={customer_id}")
+        
+        data = {
+            "customer_id": customer_id
+        }
+        
+        return self._make_request("POST", f"/api/chatbot/orders/{order_id}/cancel", data=data)
+    
+    def get_size_chart(self, category: str) -> Dict[str, Any]:
+        """
+        Get size chart for product category
+        Endpoint: GET /api/chatbot/size-chart/:category
+        Categories: shirt, pants, shoes
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            category: Product category (shirt, pants, shoes)
+            
+        Returns:
+            Size chart image URL and description
+        """
+        logger.info(f"Getting size chart for category: {category}")
+        
+        return self._make_request("GET", f"/api/chatbot/size-chart/{category}")
+    
     def get_sizing_advice(
         self,
-        product_name: str,
-        height: str,
-        weight: str,
-        body_type: str = "",
-        fit_preference: str = "",
+        height: int,
+        weight: int,
+        category: str = "shirt"
     ) -> Dict[str, Any]:
-        """Get sizing advice from backend based on body metrics and preferences."""
-        logger.info(
-            f"Requesting sizing advice for product='{product_name}', height='{height}', weight='{weight}', "
-            f"body_type='{body_type}', fit_preference='{fit_preference}'"
-        )
+        """
+        Get personalized size recommendation
+        Endpoint: POST /api/chatbot/size-advice
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            height: Height in cm
+            weight: Weight in kg
+            category: Product category (shirt, pants, shoes)
+            
+        Returns:
+            Size recommendation with confidence and reasoning
+        """
+        logger.info(f"Getting size advice: height={height}cm, weight={weight}kg, category={category}")
 
         data = {
-            "product_name": product_name,
             "height": height,
             "weight": weight,
-            "body_type": body_type,
-            "fit_preference": fit_preference,
+            "category": category
         }
 
-        # Mock endpoint – you will implement it in backend later
-        return self._make_request("POST", "/internal/chatbot/sizing-advice", data=data)
+        return self._make_request("POST", "/api/chatbot/size-advice", data=data)
+    
+    def get_product_recommendations(
+        self,
+        context: str = None,
+        category: str = None,
+        limit: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Get product recommendations based on context/occasion
+        Endpoint: GET /api/chatbot/products/recommend
+        Contexts: wedding, beach, work, party, casual, sport
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            context: Occasion/context (wedding, beach, work, party, casual, sport)
+            category: Product category filter (optional)
+            limit: Max number of recommendations (default 5, max 20)
+            
+        Returns:
+            Product recommendations
+        """
+        logger.info(f"Getting recommendations: context={context}, category={category}, limit={limit}")
+        
+        params = {"limit": limit}
+        if context:
+            params["context"] = context
+        if category:
+            params["category"] = category
+        
+        return self._make_request("GET", "/api/chatbot/products/recommend", params=params)
+    
+    def ask_gemini(self, question: str) -> Dict[str, Any]:
+        """
+        Ask Google Gemini AI for general fashion questions
+        Endpoint: POST /api/chatbot/gemini/ask
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            question: User's question
+            
+        Returns:
+            AI-generated answer
+        """
+        logger.info(f"Asking Gemini AI: {question}")
+        
+        data = {
+            "question": question
+        }
+        
+        return self._make_request("POST", "/api/chatbot/gemini/ask", data=data)
+
+    # ========================================================================
+    # ADVANCED BUSINESS LOGIC ENDPOINTS (LEGACY - May need update)
+    # ========================================================================
 
     def get_styling_advice(
         self,
-        garment_to_pair: str,
-        occasion: str = "",
+        product_id: str,
     ) -> Dict[str, Any]:
-        """Get styling advice (what to pair with a given garment, by occasion)."""
-        logger.info(
-            f"Requesting styling advice for garment='{garment_to_pair}', occasion='{occasion}'"
-        )
-
-        data = {
-            "garment_to_pair": garment_to_pair,
-            "occasion": occasion,
-        }
-
-        return self._make_request("POST", "/internal/chatbot/styling-advice", data=data)
+        """
+        Get styling rules/advice for a product.
+        Real endpoint: GET /internal/products/{id}/styling-rules
+        """
+        logger.info(f"Requesting styling advice for product_id='{product_id}'")
+        return self._make_request("GET", f"/internal/products/{product_id}/styling-rules")
 
     def get_product_care_info(
         self,
-        product_name: str,
-        care_property: str = "",
+        product_id: str,
     ) -> Dict[str, Any]:
-        """Get care/washing instructions for a product."""
-        logger.info(
-            f"Requesting product care info for '{product_name}', care_property='{care_property}'"
-        )
-
-        data = {
-            "product_name": product_name,
-            "care_property": care_property,
-        }
-
-        return self._make_request("POST", "/internal/chatbot/product-care", data=data)
+        """
+        Get care/washing instructions for a product.
+        Uses the product details endpoint which includes care instructions.
+        Real endpoint: GET /internal/products/{id}
+        """
+        logger.info(f"Requesting product care info for product_id='{product_id}'")
+        result = self.get_product_by_id(product_id)
+        
+        # Extract care instructions from product details
+        if not result.get("error"):
+            care_instructions = result.get("care_instructions") or result.get("data", {}).get("care_instructions")
+            if care_instructions:
+                return {"care": care_instructions}
+        
+        return result
 
     def report_order_error(
         self,
@@ -332,21 +541,34 @@ class BackendAPIClient:
         error_type: str,
         product_name: str,
         quantity: str,
+        user_message: str = "",
+        auth_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Report order issues (missing / extra items)."""
+        """
+        Report order issues (missing / extra items).
+        Real endpoint: POST /internal/support/create-ticket
+        """
         logger.info(
             f"Reporting order error order='{order_number}', error_type='{error_type}', "
             f"product='{product_name}', quantity='{quantity}'"
         )
 
-        data = {
-            "order_number": order_number,
-            "error_type": error_type,
-            "product_name": product_name,
-            "quantity": quantity,
-        }
+        subject = f"Order Error: {error_type} - Order #{order_number}"
+        message = (
+            f"Order error reported:\n"
+            f"- Order Number: {order_number}\n"
+            f"- Error Type: {error_type}\n"
+            f"- Product: {product_name}\n"
+            f"- Quantity: {quantity}\n\n"
+            f"Original message: {user_message}"
+        )
 
-        return self._make_request("POST", "/internal/chatbot/order-error", data=data)
+        return self.create_support_ticket(
+            subject=subject,
+            message=message,
+            user_message=user_message,
+            auth_token=auth_token
+        )
 
     def request_return_or_exchange(
         self,
@@ -354,96 +576,131 @@ class BackendAPIClient:
         product_to_return: str,
         reason: str,
         product_to_get: str = "",
+        user_message: str = "",
+        auth_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create a return/exchange request for a specific item in an order."""
+        """
+        Create a return/exchange request for a specific item in an order.
+        Real endpoint: POST /internal/support/create-ticket
+        """
         logger.info(
             f"Requesting exchange for order='{order_number}', return='{product_to_return}', "
             f"get='{product_to_get}', reason='{reason}'"
         )
 
-        data = {
-            "order_number": order_number,
-            "product_to_return": product_to_return,
-            "product_to_get": product_to_get,
-            "reason": reason,
-        }
+        subject = f"Return/Exchange Request - Order #{order_number}"
+        message = (
+            f"Return/Exchange request:\n"
+            f"- Order Number: {order_number}\n"
+            f"- Product to Return: {product_to_return}\n"
+            f"- Product to Get: {product_to_get or 'N/A (Return only)'}\n"
+            f"- Reason: {reason}\n\n"
+            f"Original message: {user_message}"
+        )
 
-        return self._make_request("POST", "/internal/chatbot/return-or-exchange", data=data)
+        return self.create_support_ticket(
+            subject=subject,
+            message=message,
+            user_message=user_message,
+            auth_token=auth_token
+        )
 
     def report_quality_issue(
         self,
         product_name: str,
         defect_description: str,
+        user_message: str = "",
+        auth_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Report quality issues for a product (e.g., defects)."""
+        """
+        Report quality issues for a product (e.g., defects).
+        Real endpoint: POST /internal/support/create-ticket
+        """
         logger.info(
             f"Reporting quality issue for '{product_name}', defect='{defect_description}'"
         )
 
-        data = {
-            "product_name": product_name,
-            "defect_description": defect_description,
-        }
+        subject = f"Quality Issue: {product_name}"
+        message = (
+            f"Quality issue reported:\n"
+            f"- Product: {product_name}\n"
+            f"- Defect Description: {defect_description}\n\n"
+            f"Original message: {user_message}"
+        )
 
-        return self._make_request("POST", "/internal/chatbot/quality-issue", data=data)
+        return self.create_support_ticket(
+            subject=subject,
+            message=message,
+            user_message=user_message,
+            auth_token=auth_token
+        )
 
     def handle_policy_exception(
         self,
         product_name: str,
         policy_type: str,
         reason: str,
+        user_message: str = "",
+        auth_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Ask backend to handle a potential policy exception case."""
+        """
+        Ask backend to handle a potential policy exception case.
+        Real endpoint: POST /internal/support/create-ticket
+        """
         logger.info(
             f"Handling policy exception for product='{product_name}', policy='{policy_type}', reason='{reason}'"
         )
 
-        data = {
-            "product_name": product_name,
-            "policy_type": policy_type,
-            "reason": reason,
-        }
+        subject = f"Policy Exception Request: {policy_type}"
+        message = (
+            f"Policy exception request:\n"
+            f"- Product: {product_name}\n"
+            f"- Policy Type: {policy_type}\n"
+            f"- Reason: {reason}\n\n"
+            f"Original message: {user_message}"
+        )
 
-        return self._make_request("POST", "/internal/chatbot/policy-exception", data=data)
+        return self.create_support_ticket(
+            subject=subject,
+            message=message,
+            user_message=user_message,
+            auth_token=auth_token
+        )
 
     def set_stock_notification(
         self,
-        product_name: str,
-        size: str,
-        price_condition: str,
-        user_id: str = "",
+        product_id: str,
+        variant_id: str,
+        auth_token: str,
     ) -> Dict[str, Any]:
-        """Subscribe user to stock notifications with optional price condition."""
+        """
+        Subscribe user to stock notifications.
+        Real endpoint: POST /internal/notifications/subscribe
+        Requires JWT authentication - user_id derived from token
+        """
         logger.info(
-            f"Setting stock notification for product='{product_name}', size='{size}', "
-            f"price_condition='{price_condition}', user_id='{user_id}'"
+            f"Setting stock notification for product_id='{product_id}', variant_id='{variant_id}'"
         )
 
         data = {
-            "product_name": product_name,
-            "size": size,
-            "price_condition": price_condition,
-            "user_id": user_id,
+            "product_id": product_id,
+            "variant_id": variant_id,
+            "notification_type": "stock_alert"
         }
 
-        return self._make_request("POST", "/internal/chatbot/stock-notification", data=data)
+        return self._make_request("POST", "/internal/notifications/subscribe", data=data, auth_token=auth_token)
 
-    def check_discount(
+    def get_top_discounts(
         self,
-        discount_codes: List[str],
-        product_name: str = "",
+        limit: int = 10,
     ) -> Dict[str, Any]:
-        """Validate discount codes against cart / product context."""
-        logger.info(
-            f"Checking discount logic for codes={discount_codes}, product='{product_name}'"
-        )
-
-        data = {
-            "discount_codes": discount_codes,
-            "product_name": product_name,
-        }
-
-        return self._make_request("POST", "/internal/chatbot/check-discount", data=data)
+        """
+        Get top discounted products (no discount codes used).
+        Real endpoint: GET /internal/promotions/top-discounts
+        """
+        logger.info(f"Fetching top {limit} discounted products")
+        params = {"limit": limit}
+        return self._make_request("GET", "/internal/promotions/top-discounts", params=params)
 
 
 # Singleton instance

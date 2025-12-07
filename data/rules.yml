@@ -108,11 +108,6 @@ rules:
   - intent: ask_fit_style
   - action: utter_fit_info
 
-- rule: Provide styling advice
-  steps:
-  - intent: ask_styling_advice
-  - action: utter_styling_advice
-
 - rule: Show reviews
   steps:
   - intent: ask_reviews

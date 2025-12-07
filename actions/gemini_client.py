@@ -29,6 +29,7 @@ class GeminiRAGClient:
         self.api_key = os.getenv("GEMINI_API_KEY", "")
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
         self.enabled = os.getenv("ENABLE_RAG", "true").lower() == "true"
+        self.model = None
         
         if not GEMINI_AVAILABLE:
             logger.warning("google-generativeai package not available. RAG features disabled.")
@@ -48,6 +49,7 @@ class GeminiRAGClient:
         except Exception as e:
             logger.error(f"Failed to initialize Gemini: {str(e)}")
             self.enabled = False
+            self.model = None
     
     def _build_context_from_products(self, products: List[Dict]) -> str:
         """
@@ -132,7 +134,7 @@ class GeminiRAGClient:
         Returns:
             Generated response with metadata
         """
-        if not self.enabled:
+        if not self.enabled or not self.model:
             return {
                 "success": False,
                 "error": "RAG is disabled",
@@ -183,7 +185,7 @@ class GeminiRAGClient:
         Returns:
             Generated response
         """
-        if not self.enabled:
+        if not self.enabled or not self.model:
             return {
                 "success": False,
                 "error": "RAG is disabled",
@@ -227,10 +229,10 @@ class GeminiRAGClient:
         Returns:
             Generated response
         """
-        if not self.enabled:
+        if not self.enabled or not self.model:
             return {
                 "success": False,
-                "error": "RAG is disabled",
+                "error": "RAG is disabled or model not initialized",
                 "response": None
             }
         

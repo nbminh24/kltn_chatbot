@@ -8,6 +8,7 @@ from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet, FollowupAction
 import logging
+import time
 
 from .api_client import get_api_client
 from .gemini_client import get_gemini_client
@@ -32,6 +33,10 @@ class ActionSearchProducts(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        action_start = time.time()
+        logger.info("=" * 50)
+        logger.info("🚀 Starting action_search_products")
+        
         # Get search query from entities or user message
         product_type = next(tracker.get_latest_entity_values("product_type"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
@@ -39,8 +44,77 @@ class ActionSearchProducts(Action):
         query = product_type or product_name or tracker.latest_message.get("text", "")
         
         if not query:
-            dispatcher.utter_message(text="What product are you looking for?")
+            dispatcher.utter_message(text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊")
             return []
+        
+        logger.info(f"Searching products with query: {query}")
+        
+        # Call backend API with timing
+        api_client = get_api_client()
+        start_time = time.time()
+        result = api_client.search_products(query, limit=10)
+        api_time = time.time() - start_time
+        logger.info(f"⏱️ API search_products took {api_time:.3f}s")
+        
+        if result.get("error"):
+            dispatcher.utter_message(
+                text=f"Oops, our system is a bit busy right now. Could you try again in a moment? Sorry about that! 🙏"
+            )
+            return [SlotSet("products_found", False)]
+        
+        products = result.get("products", [])
+        
+        if not products:
+            dispatcher.utter_message(
+                text=f"Hmm, I couldn't find anything matching '{query}' 😅\n\nCould you describe it differently? Or would you like me to show you what's popular right now?"
+            )
+            return [SlotSet("products_found", False)]
+        
+        # Format and display results
+        if len(products) == 1:
+            response = f"Perfect! I found this one for you:\n\n"
+        else:
+            response = f"Great! I found {len(products)} products that match what you're looking for:\n\n"
+        
+        for i, product in enumerate(products[:5], 1):  # Limit to 5 for better UX
+            name = product.get("name", "Unknown")
+            price = product.get("selling_price", 0)
+            stock = product.get("total_stock", 0)
+            
+            # Format price with comma separator if it's a number
+            if isinstance(price, (int, float)) and price > 0:
+                price_str = f"{price:,.0f}₫"
+            else:
+                price_str = "Contact for price"
+            
+            response += f"{i}. **{name}**\n"
+            response += f"   Price: {price_str}"
+            
+            if stock > 0:
+                response += f" - In stock ✅\n\n"
+            else:
+                response += f" - Out of stock 😢\n\n"
+        
+        if len(products) > 5:
+            response += f"_(Showing 5 first, there are {len(products) - 5} more!)_\n\n"
+        
+        # Natural follow-up suggestions
+        if len(products) == 1:
+            response += "Would you like to know more about sizing, styling tips, or anything else? 😊"
+        else:
+            response += "Which one catches your eye? I can tell you more about any of them, or suggest similar items if you'd like! 😊"
+        
+        dispatcher.utter_message(text=response)
+        
+        action_time = time.time() - action_start
+        logger.info(f"✅ action_search_products completed in {action_time:.3f}s")
+        logger.info("=" * 50)
+        
+        return [
+            SlotSet("products_found", True),
+            SlotSet("last_search_query", query),
+            SlotSet("last_products", products)
+        ]
 
 
 class ActionGetSizingAdvice(Action):
@@ -81,8 +155,21 @@ class ActionGetSizingAdvice(Action):
             return []
 
         api_client = get_api_client()
+        
+        # First, search for the product to get product_id
+        search_result = api_client.search_products(product_name, limit=1)
+        if search_result.get("error") or not search_result.get("products"):
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Could you verify the product name?")
+            return []
+        
+        product_id = search_result["products"][0].get("id")
+        if not product_id:
+            dispatcher.utter_message(text="I found the product but couldn't get its details. Please try again.")
+            return []
+        
+        # Get sizing advice with product_id
         result = api_client.get_sizing_advice(
-            product_name=product_name,
+            product_id=product_id,
             height=str(height),
             weight=str(weight),
             body_type=str(body_type),
@@ -113,7 +200,7 @@ class ActionGetSizingAdvice(Action):
 
 
 class ActionGetStylingAdvice(Action):
-    """Get styling advice for a garment and occasion."""
+    """Get styling advice for a garment."""
 
     def name(self) -> Text:
         return "action_get_styling_advice"
@@ -125,19 +212,27 @@ class ActionGetStylingAdvice(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
-        # For now we use product_name as garment_to_pair
-        garment_to_pair = next(tracker.get_latest_entity_values("product_name"), None)
-        occasion = next(tracker.get_latest_entity_values("occasion"), "")
+        product_name = next(tracker.get_latest_entity_values("product_name"), None)
 
-        if not garment_to_pair:
-            user_text = tracker.latest_message.get("text", "")
-            garment_to_pair = user_text
+        if not product_name:
+            dispatcher.utter_message(text="Which product would you like styling advice for?")
+            return []
 
         api_client = get_api_client()
-        result = api_client.get_styling_advice(
-            garment_to_pair=garment_to_pair,
-            occasion=str(occasion),
-        )
+        
+        # Search for product to get product_id
+        search_result = api_client.search_products(product_name, limit=1)
+        if search_result.get("error") or not search_result.get("data"):
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please verify the product name.")
+            return []
+        
+        product_id = search_result["data"][0].get("id")
+        if not product_id:
+            dispatcher.utter_message(text="I found the product but couldn't get styling details.")
+            return []
+        
+        # Get styling advice using real API
+        result = api_client.get_styling_advice(product_id=product_id)
 
         if result.get("error"):
             dispatcher.utter_message(
@@ -148,9 +243,10 @@ class ActionGetStylingAdvice(Action):
             )
             return []
 
-        advice = result.get("data", {}).get("advice") or result.get("advice")
-        if advice:
-            dispatcher.utter_message(text=advice)
+        # Extract styling rules from response
+        styling_rules = result.get("data", {}).get("styling_rules") or result.get("styling_rules")
+        if styling_rules:
+            dispatcher.utter_message(text=styling_rules)
         else:
             dispatcher.utter_message(
                 text=(
@@ -163,7 +259,7 @@ class ActionGetStylingAdvice(Action):
 
 
 class ActionGetProductCare(Action):
-    """Answer product care / washing questions using backend info."""
+    """Answer product care / washing questions using product details API."""
 
     def name(self) -> Text:
         return "action_get_product_care"
@@ -176,7 +272,6 @@ class ActionGetProductCare(Action):
     ) -> List[Dict[Text, Any]]:
 
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
-        care_property = next(tracker.get_latest_entity_values("care_property"), "")
 
         if not product_name:
             dispatcher.utter_message(
@@ -185,10 +280,20 @@ class ActionGetProductCare(Action):
             return []
 
         api_client = get_api_client()
-        result = api_client.get_product_care_info(
-            product_name=product_name,
-            care_property=str(care_property),
-        )
+        
+        # Search for product to get product_id
+        search_result = api_client.search_products(product_name, limit=1)
+        if search_result.get("error") or not search_result.get("data"):
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please check the product name.")
+            return []
+        
+        product_id = search_result["data"][0].get("id")
+        if not product_id:
+            dispatcher.utter_message(text="I found the product but couldn't get care details.")
+            return []
+        
+        # Get care instructions from product details (real API call)
+        result = api_client.get_product_care_info(product_id=product_id)
 
         if result.get("error"):
             dispatcher.utter_message(
@@ -199,9 +304,9 @@ class ActionGetProductCare(Action):
             )
             return []
 
-        care_text = result.get("data", {}).get("care") or result.get("care")
+        care_text = result.get("care")
         if care_text:
-            dispatcher.utter_message(text=care_text)
+            dispatcher.utter_message(text=f"Care instructions: {care_text}")
         else:
             dispatcher.utter_message(
                 text=(
@@ -249,24 +354,16 @@ class ActionReportOrderError(Action):
             return []
 
         api_client = get_api_client()
-        # Note: backend can infer user from JWT; we just log the issue here.
+        user_message = tracker.latest_message.get("text", "")
+        
+        # Report order error - creates support ticket internally
         result = api_client.report_order_error(
             order_number=order_number,
             error_type=str(error_type),
             product_name=product_name,
             quantity=str(quantity),
-        )
-
-        # Always create a support ticket as well
-        user_message = tracker.latest_message.get("text", "")
-        api_client.create_support_ticket(
-            subject=f"Order issue reported for {order_number}",
-            message=(
-                f"Customer reported an order issue. Type: {error_type}, "
-                f"product: {product_name}, quantity: {quantity}."
-            ),
             user_message=user_message,
-            conversation_history=None,
+            auth_token=user_token,
         )
 
         if result.get("error"):
@@ -323,11 +420,15 @@ class ActionRequestReturnOrExchange(Action):
             return []
 
         api_client = get_api_client()
+        user_message = tracker.latest_message.get("text", "")
+        
         result = api_client.request_return_or_exchange(
             order_number=order_number,
             product_to_return=product_to_return,
             product_to_get=str(product_to_get),
             reason=str(reason),
+            user_message=user_message,
+            auth_token=user_token,
         )
 
         if result.get("error"):
@@ -382,9 +483,13 @@ class ActionReportQualityIssue(Action):
             return []
 
         api_client = get_api_client()
+        user_message = tracker.latest_message.get("text", "")
+        
         result = api_client.report_quality_issue(
             product_name=product_name,
             defect_description=str(defect_description),
+            user_message=user_message,
+            auth_token=user_token,
         )
 
         dispatcher.utter_message(
@@ -438,22 +543,15 @@ class ActionHandlePolicyException(Action):
             return []
 
         api_client = get_api_client()
+        user_message = tracker.latest_message.get("text", "")
+        
+        # Creates support ticket internally
         result = api_client.handle_policy_exception(
             product_name=product_name,
             policy_type=str(policy_type),
             reason=str(reason),
-        )
-
-        # Always escalate to human support
-        user_message = tracker.latest_message.get("text", "")
-        api_client.create_support_ticket(
-            subject="Policy exception request",
-            message=(
-                f"Customer requested a policy exception for product '{product_name}', "
-                f"policy '{policy_type}', reason: {reason}."
-            ),
             user_message=user_message,
-            conversation_history=None,
+            auth_token=user_token,
         )
 
         dispatcher.utter_message(
@@ -467,7 +565,7 @@ class ActionHandlePolicyException(Action):
 
 
 class ActionSetStockNotification(Action):
-    """Register a stock notification with optional price condition."""
+    """Register a stock notification for out-of-stock products."""
 
     def name(self) -> Text:
         return "action_set_stock_notification"
@@ -481,7 +579,6 @@ class ActionSetStockNotification(Action):
 
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         size = next(tracker.get_latest_entity_values("size"), None)
-        price_condition = next(tracker.get_latest_entity_values("price_condition"), "")
 
         user_token = tracker.get_slot("user_jwt_token")
         if not user_token:
@@ -492,20 +589,31 @@ class ActionSetStockNotification(Action):
             )
             return []
 
-        if not product_name or not size:
+        if not product_name:
             dispatcher.utter_message(
-                text=(
-                    "Please tell me which product and which size you want to be notified about."
-                )
+                text="Please tell me which product you want to be notified about."
             )
             return []
 
         api_client = get_api_client()
+        
+        # Search for product to get product_id
+        search_result = api_client.search_products(product_name, limit=1)
+        if search_result.get("error") or not search_result.get("data"):
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please verify the product name.")
+            return []
+        
+        product = search_result["data"][0]
+        product_id = product.get("id")
+        
+        # For simplicity, use first variant or default variant_id
+        # In production, match size to specific variant
+        variant_id = product.get("default_variant_id", "default")
+        
         result = api_client.set_stock_notification(
-            product_name=product_name,
-            size=str(size),
-            price_condition=str(price_condition),
-            user_id="",  # backend can derive user from JWT or session
+            product_id=product_id,
+            variant_id=variant_id,
+            auth_token=user_token,
         )
 
         if result.get("error"):
@@ -517,17 +625,14 @@ class ActionSetStockNotification(Action):
             )
         else:
             dispatcher.utter_message(
-                text=(
-                    "Got it! I will notify you when this size is back in stock"
-                    + (f" and meets your price condition ({price_condition})." if price_condition else ".")
-                )
+                text=f"Got it! I will notify you when '{product_name}' is back in stock."
             )
 
         return []
 
 
 class ActionCheckDiscount(Action):
-    """Explain why discount codes work or not for the current context."""
+    """List top discounted products (no discount codes - direct pricing)."""
 
     def name(self) -> Text:
         return "action_check_discount"
@@ -539,90 +644,41 @@ class ActionCheckDiscount(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
-        # Collect all discount_code entities in the message
-        discount_codes: List[str] = []
-        for ent in tracker.latest_message.get("entities", []):
-            if ent.get("entity") == "discount_code" and ent.get("value"):
-                discount_codes.append(str(ent.get("value")))
-
-        product_name = next(tracker.get_latest_entity_values("product_name"), "")
-
-        if not discount_codes:
-            dispatcher.utter_message(
-                text="Please tell me which discount codes you are trying to use."
-            )
-            return []
-
         api_client = get_api_client()
-        result = api_client.check_discount(
-            discount_codes=discount_codes,
-            product_name=str(product_name),
-        )
+        result = api_client.get_top_discounts(limit=10)
 
         if result.get("error"):
             dispatcher.utter_message(
-                text=(
-                    "The discount rules can be a bit strict. Some codes cannot be combined or do not apply "
-                    "to certain products or sale items. Please check the terms of each code."
-                )
+                text="I couldn't fetch the current discounts right now. Please check our sale section on the website."
             )
             return []
 
-        explanation = result.get("data", {}).get("explanation") or result.get("explanation")
-        if explanation:
-            dispatcher.utter_message(text=explanation)
-        else:
-            dispatcher.utter_message(
-                text=(
-                    "Typically, you can only use one promo code per order and some codes exclude specific "
-                    "categories like sale items or leather goods."
-                )
-            )
-
-        return []
-        
-        logger.info(f"Searching products with query: {query}")
-        
-        # Call backend API
-        api_client = get_api_client()
-        result = api_client.search_products(query, limit=5)
-        
-        if result.get("error"):
-            dispatcher.utter_message(
-                text=f"Sorry, I encountered an error while searching: {result.get('message')}"
-            )
-            return [SlotSet("products_found", False)]
-        
         products = result.get("data", [])
         
         if not products:
             dispatcher.utter_message(
-                text=f"I couldn't find any products matching '{query}'. Would you like to try a different search or speak with our support team?"
+                text="There are no special discounts available at the moment, but we update our deals regularly!"
             )
-            return [SlotSet("products_found", False)]
-        
-        # Format and display results
-        response = f"I found {len(products)} product(s) for you:\n\n"
-        
-        for i, product in enumerate(products, 1):
+            return []
+
+        # Format the response with top discounted products
+        response = "🎉 **Top Discounted Products:**\n\n"
+        for i, product in enumerate(products[:5], 1):
             name = product.get("name", "Unknown")
-            price = product.get("price", "N/A")
-            stock = product.get("stock", 0)
-            status = "✅ In Stock" if stock > 0 else "❌ Out of Stock"
+            original_price = product.get("original_price", 0)
+            discounted_price = product.get("price", 0)
+            discount_percent = product.get("discount_percent", 0)
             
             response += f"{i}. **{name}**\n"
-            response += f"   💰 Price: ${price}\n"
-            response += f"   📦 Status: {status}\n\n"
+            if original_price and discounted_price:
+                response += f"   💰 ~~${original_price}~~ **${discounted_price}** ({discount_percent}% off)\n\n"
+            else:
+                response += f"   💰 **${discounted_price}**\n\n"
         
-        response += "Would you like more details about any of these products?"
+        response += "Would you like to know more about any of these products?"
         
         dispatcher.utter_message(text=response)
-        
-        return [
-            SlotSet("products_found", True),
-            SlotSet("last_search_query", query),
-            SlotSet("last_products", products)
-        ]
+        return [SlotSet("last_products", products)]
 
 
 class ActionGetProductPrice(Action):
@@ -650,28 +706,37 @@ class ActionGetProductPrice(Action):
                 dispatcher.utter_message(text=response)
                 return []
             else:
-                dispatcher.utter_message(text="Which product would you like to know the price of?")
+                dispatcher.utter_message(text="Which product would you like to know the price of? 😊")
                 return []
         
         logger.info(f"Getting price for product: {product_name}")
         
-        # Search for the product
+        # Search for the product with timing
         api_client = get_api_client()
+        start_time = time.time()
         result = api_client.search_products(product_name, limit=1)
+        api_time = time.time() - start_time
+        logger.info(f"⏱️ API search_products took {api_time:.3f}s")
         
-        if result.get("error") or not result.get("data"):
+        if result.get("error") or not result.get("products"):
             dispatcher.utter_message(
-                text=f"Sorry, I couldn't find pricing information for '{product_name}'. Would you like me to search for similar products?"
+                text=f"Hmm, I couldn't find pricing for '{product_name}' 😅\n\nWould you like me to search for something similar?"
             )
             return []
         
-        product = result["data"][0]
+        product = result["products"][0]
         name = product.get("name")
-        price = product.get("price")
+        price = product.get("selling_price", 0)
         
-        dispatcher.utter_message(
-            text=f"The **{name}** is priced at **${price}**. Would you like to know more about this product?"
-        )
+        if isinstance(price, (int, float)) and price > 0:
+            price_str = f"{price:,.0f}₫"
+            dispatcher.utter_message(
+                text=f"The **{name}** is priced at **{price_str}**.\n\nWould you like to know more details about this product? I'm happy to help! 😊"
+            )
+        else:
+            dispatcher.utter_message(
+                text=f"The **{name}** is currently being updated with pricing. Please contact us directly for the most accurate quote! 📱"
+            )
         
         return [SlotSet("last_product", product)]
 
@@ -692,31 +757,34 @@ class ActionCheckAvailability(Action):
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
         if not product_name:
-            dispatcher.utter_message(text="Which product would you like to check availability for?")
+            dispatcher.utter_message(text="Which product would you like me to check stock for? 😊")
             return []
         
         logger.info(f"Checking availability for: {product_name}")
         
         api_client = get_api_client()
+        start_time = time.time()
         result = api_client.search_products(product_name, limit=1)
+        api_time = time.time() - start_time
+        logger.info(f"⏱️ API search_products took {api_time:.3f}s")
         
-        if result.get("error") or not result.get("data"):
+        if result.get("error") or not result.get("products"):
             dispatcher.utter_message(
-                text=f"Sorry, I couldn't find '{product_name}' in our inventory."
+                text=f"Hmm, I couldn't find '{product_name}' in our inventory 😅\n\nWould you like to try another product, or should I suggest some alternatives?"
             )
             return []
         
-        product = result["data"][0]
+        product = result["products"][0]
         name = product.get("name")
-        stock = product.get("stock", 0)
+        stock = product.get("total_stock", 0)
         
         if stock > 0:
             dispatcher.utter_message(
-                text=f"Great news! **{name}** is currently in stock with {stock} unit(s) available. Would you like to place an order?"
+                text=f"Good news! **{name}** is in stock with {stock} units available 🎉\n\nWould you like to place an order, or need any advice first? 😊"
             )
         else:
             dispatcher.utter_message(
-                text=f"Unfortunately, **{name}** is currently out of stock. Would you like me to notify you when it's back in stock or suggest similar alternatives?"
+                text=f"Unfortunately, **{name}** is currently out of stock 😢\n\nWould you like me to notify you when it's back, or suggest similar items? 📱"
             )
         
         return [SlotSet("last_product", product)]
@@ -743,36 +811,80 @@ class ActionGetProductDetails(Action):
             if last_product:
                 product = last_product
             else:
-                dispatcher.utter_message(text="Which product would you like to know more about?")
-                return []
+                # No specific product - show popular/recommended products
+                api_client = get_api_client()
+                start_time = time.time()
+                result = api_client.search_products("popular", limit=5)
+                api_time = time.time() - start_time
+                logger.info(f"⏱️ API search_products (popular) took {api_time:.3f}s")
+                
+                if result.get("error") or not result.get("products"):
+                    dispatcher.utter_message(
+                        text="We have everything from shirts, pants, jackets to accessories! What are you interested in? 😊"
+                    )
+                    return []
+                
+                products = result["products"]
+                response = "Let me show you our hottest items right now:\n\n"
+                for i, prod in enumerate(products[:3], 1):
+                    name = prod.get('name', 'Unknown')
+                    price = prod.get('selling_price', 0)
+                    stock = prod.get('total_stock', 0)
+                    
+                    if isinstance(price, (int, float)) and price > 0:
+                        price_str = f"{price:,.0f}₫"
+                    else:
+                        price_str = "Contact us"
+                    
+                    status = "in stock" if stock > 0 else "out of stock"
+                    response += f"{i}. **{name}** - {price_str} ({status})\n"
+                
+                response += "\n💬 You can ask me:\n"
+                response += "• 'I want to find a jacket/pants/shoes'\n"
+                response += "• 'Show me details about [product name]'\n"
+                response += "• 'What size would fit me?'"
+                dispatcher.utter_message(text=response)
+                return [SlotSet("last_products", products)]
         else:
             api_client = get_api_client()
+            start_time = time.time()
             result = api_client.search_products(product_name, limit=1)
+            api_time = time.time() - start_time
+            logger.info(f"⏱️ API search_products took {api_time:.3f}s")
             
-            if result.get("error") or not result.get("data"):
+            if result.get("error") or not result.get("products"):
                 dispatcher.utter_message(
-                    text=f"Sorry, I couldn't find details for '{product_name}'."
+                    text=f"Hmm, I couldn't find '{product_name}' 😅\n\nCould you try a different name, or would you like me to suggest alternatives?"
                 )
                 return []
             
-            product = result["data"][0]
+            product = result["products"][0]
         
         # Format product details
-        name = product.get("name", "Unknown")
-        price = product.get("price", "N/A")
-        description = product.get("description", "No description available")
-        stock = product.get("stock", 0)
-        category = product.get("category", "General")
+        name = product.get("name", "Product")
+        price = product.get("selling_price", 0)
+        description = product.get("description", "High quality product")
+        stock = product.get("total_stock", 0)
+        category = product.get("category_name", "General")
+        
+        if isinstance(price, (int, float)) and price > 0:
+            price_str = f"{price:,.0f}₫"
+        else:
+            price_str = "Contact for pricing"
         
         response = f"📦 **{name}**\n\n"
-        response += f"💰 **Price:** ${price}\n"
-        response += f"📂 **Category:** {category}\n"
-        response += f"📋 **Description:**\n{description}\n\n"
-        response += f"📦 **Availability:** {'✅ In Stock' if stock > 0 else '❌ Out of Stock'}\n\n"
-        response += "Would you like to know anything else about this product?"
+        response += f"💰 Price: {price_str}\n"
+        response += f"📂 Category: {category}\n"
+        
+        if stock > 0:
+            response += f"✅ In stock - {stock} units available!\n\n"
+        else:
+            response += f"😢 Currently out of stock\n\n"
+        
+        response += f"📝 **Description:**\n{description}\n\n"
+        response += "Would you like sizing advice, styling tips, or ready to order? 😊"
         
         dispatcher.utter_message(text=response)
-        
         return [SlotSet("last_product", product)]
 
 
@@ -781,7 +893,7 @@ class ActionGetProductDetails(Action):
 # ============================================================================
 
 class ActionTrackOrder(Action):
-    """Track order status"""
+    """Track order status - supports order number or product name search"""
     
     def name(self) -> Text:
         return "action_track_order"
@@ -794,10 +906,7 @@ class ActionTrackOrder(Action):
     ) -> List[Dict[Text, Any]]:
         
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
-        
-        if not order_number:
-            dispatcher.utter_message(response="utter_ask_order_number")
-            return []
+        product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
         # Get user JWT token from slot (set by frontend)
         user_token = tracker.get_slot("user_jwt_token")
@@ -808,17 +917,49 @@ class ActionTrackOrder(Action):
             )
             return []
         
-        logger.info(f"Tracking order: {order_number}")
-        
-        # Remove '#' if present
-        order_id = order_number.replace("#", "")
-        
         api_client = get_api_client()
+        
+        # Better UX: Track by purchased product instead of order number
+        if product_name and not order_number:
+            logger.info(f"Tracking order by product: {product_name}")
+            
+            result = api_client.search_purchased_products(product_name, user_token)
+            
+            if result.get("error") or not result.get("data"):
+                dispatcher.utter_message(
+                    text=f"I couldn't find any orders with '{product_name}'. Please verify the product name or provide your order number."
+                )
+                return []
+            
+            orders = result["data"]
+            if len(orders) == 1:
+                # Single match - show order details
+                order_number = orders[0].get("order_number")
+                order_id = orders[0].get("order_id")
+            else:
+                # Multiple matches - list them
+                response = f"I found {len(orders)} orders with '{product_name}':\n\n"
+                for i, order in enumerate(orders[:3], 1):
+                    response += f"{i}. Order #{order.get('order_number')} - {order.get('status')} ({order.get('date')})\n"
+                response += "\nWhich order would you like to track?"
+                dispatcher.utter_message(text=response)
+                return []
+        
+        elif order_number:
+            logger.info(f"Tracking order by number: {order_number}")
+            order_id = order_number.replace("#", "")
+        else:
+            dispatcher.utter_message(
+                text="Please provide your order number or tell me which product you ordered."
+            )
+            return []
+        
+        # Get order details
         result = api_client.get_order_details(order_id, user_token)
         
         if result.get("error"):
             dispatcher.utter_message(
-                text=f"Sorry, I couldn't find order {order_number}. Please verify the order number and try again."
+                text=f"Sorry, I couldn't find order {order_number}. Please verify and try again."
             )
             return []
         
@@ -827,7 +968,7 @@ class ActionTrackOrder(Action):
         created_at = order.get("created_at", "N/A")
         total = order.get("total", "N/A")
         
-        response = f"📦 **Order {order_number}**\n\n"
+        response = f"📦 **Order #{order_number}**\n\n"
         response += f"📊 **Status:** {status}\n"
         response += f"📅 **Placed on:** {created_at}\n"
         response += f"💰 **Total:** ${total}\n\n"
@@ -1196,21 +1337,21 @@ class ActionFallback(Action):
                 logger.info(f"RAG successfully handled fallback: {user_message}")
                 dispatcher.utter_message(text=rag_result["response"])
                 dispatcher.utter_message(
-                    text="Mình có thể giúp gì thêm cho bạn không? 😊"
+                    text="Can I help you with anything else? 😊"
                 )
                 return []
         
         # Standard fallback if RAG fails or disabled
         logger.warning(f"RAG failed or disabled for: {user_message}")
         dispatcher.utter_message(
-            text="Xin lỗi, mình chưa hiểu rõ yêu cầu của bạn 😅\n\n"
-                 "Mình có thể hỗ trợ bạn:\n"
-                 "• Tìm kiếm & tư vấn sản phẩm (áo, quần, phụ kiện)\n"
-                 "• Tư vấn size, chất liệu, phối đồ\n"
-                 "• Theo dõi đơn hàng\n"
-                 "• Chính sách vận chuyển, đổi trả\n"
-                 "• Khuyến mãi & voucher\n\n"
-                 "Bạn muốn mình giúp gì nào? 👕"
+            text="Sorry, I didn't quite understand that 😅\n\n"
+                 "I can help you with:\n"
+                 "• Product search & advice (shirts, pants, accessories)\n"
+                 "• Size, material, and styling advice\n"
+                 "• Order tracking\n"
+                 "• Shipping and return policies\n"
+                 "• Promotions & discounts\n\n"
+                 "What can I help you with? 👕"
         )
         
         return []

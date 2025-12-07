@@ -18,6 +18,11 @@ nlu:
     - what's up
     - yo
     - sup
+    - chào
+    - xin chào
+    - hi bot
+    - hey bot
+    - hello bot
 
 - intent: goodbye
   examples: |
@@ -57,6 +62,37 @@ nlu:
     - Do you sell [coffee makers](product_type)?
     - I'm interested in [ergonomic chairs](product_type)
     - Can you show me [sports equipment](product_type)?
+    - I want to find a [jacket](product_type)
+    - i want to find a [jacket](product_type)
+    - want to find a [jacket](product_type)
+    - find a [jacket](product_type)
+    - find me a [jacket](product_type)
+    - Looking for [coat](product_type)
+    - Show me [jackets](product_type)
+    - I need a [winter jacket](product_type)
+    - Find [leather jacket](product_type)
+    - tôi muốn tìm [áo khoác](product_type)
+    - muốn tìm [áo khoác](product_type)
+    - tìm [áo khoác](product_type)
+    - cho tôi xem [áo](product_type)
+    - tìm [quần jeans](product_type)
+    - I want a [polo shirt](product_type)
+    - want a [polo shirt](product_type)
+    - Show me [casual wear](product_type)
+    - Looking for [shirts](product_type)
+    - find [shirts](product_type)
+    - I want [pants](product_type)
+    - want [pants](product_type)
+    - find [pants](product_type)
+    - show me [áo khoác phao nâu basic](product_name)
+    - I'm searching for [shoes](product_type)
+    - search [sneakers](product_type)
+    - got any [hoodies](product_type)
+    - looking to buy [sweater](product_type)
+    - need some [accessories](product_type)
+    - show [hats](product_type)
+    - what [bags](product_type) you got
+    - browse [jackets](product_type)
 
 - intent: ask_product_price
   examples: |
@@ -74,6 +110,16 @@ nlu:
     - What's the cost of headphones?
     - Price of this item
     - How much is this?
+    - price
+    - cost
+    - how much
+    - what's the price
+    - price please
+    - tell me the price
+    - how much for this
+    - what does it cost
+    - pricing info
+    - cost of this
 
 - intent: check_product_availability
   examples: |
@@ -90,6 +136,16 @@ nlu:
     - Do you have [size 10](size) for [running shoes](product_type)?
     - Available in [black](color)?
     - Any [large](size) sizes left?
+    - in stock?
+    - available?
+    - do you have it
+    - got this
+    - can I get this
+    - is it available
+    - stock check
+    - availability
+    - still in stock
+    - you have this
 
 - intent: ask_product_details
   examples: |
@@ -106,6 +162,29 @@ nlu:
     - What materials is this made of?
     - Tell me about the quality
     - Is this waterproof?
+    - Can you introduce one of your products?
+    - Introduce me to your products
+    - What products do you have?
+    - Tell me about your products
+    - Show me what you sell
+    - details
+    - more info
+    - tell me more
+    - what's this
+    - specs
+    - features
+    - info please
+    - product info
+    - describe this
+    - What can I buy here?
+    - Recommend me a product
+    - What do you recommend?
+    - Suggest something
+    - What's popular?
+    - What's your best product?
+    - giới thiệu sản phẩm
+    - có sản phẩm gì
+    - bán gì
 
 # ============================================================================
 # 3. ORDER TRACKING & MANAGEMENT
@@ -127,6 +206,26 @@ nlu:
     - Order tracking
     - Delivery status
     - Shipping update
+    - help me check the order ID [1](order_number)
+    - check order ID [2](order_number)
+    - track order ID [123](order_number)
+    - order ID [456](order_number)
+    - check the status of order [789](order_number)
+    - help me track order [100](order_number)
+    - I want to check order [555](order_number)
+    - can you help me check order [999](order_number)
+    - help with order [12](order_number)
+    - order [34](order_number) status
+    - status for order [56](order_number)
+    - where's order [78](order_number)
+    - track [90](order_number)
+    - check [111](order_number)
+    - order number [222](order_number)
+    - help me with order ID [333](order_number)
+    - I need to track [444](order_number)
+    - what's the status of [666](order_number)
+    - check order [777](order_number) please
+    - help me check order [888](order_number)
 
 - intent: cancel_order
   examples: |
@@ -207,16 +306,18 @@ nlu:
 # ============================================================================
 - intent: ask_recommendation
   examples: |
-    - Can you recommend a laptop?
-    - What's the best smartphone?
-    - Recommend me headphones
+    - Can you recommend something?
+    - What do you suggest?
+    - Recommend a product
     - What should I buy?
     - Best product for gaming
     - Top rated items
-    - What's popular?
+    - Show me bestsellers
     - Bestsellers
     - Customer favorites
     - Most popular products
+    - Top picks
+    - What's trending?
     - Trending items
     - What do you suggest for [photography](category)?
 
@@ -278,13 +379,23 @@ nlu:
   examples: |
     - thanks
     - thank you
+    - thx
     - thank you so much
     - thanks a lot
     - appreciate it
     - thanks for your help
-    - thx
-    - ty
+    - thank you for helping me
     - much appreciated
+    - thanks!
+    - thank u
+    - ty
+    - tks
+    - cảm ơn
+    - cám ơn
+    - thanks bạn
+    - ok thanks
+    - great thanks
+    - perfect thanks
 
 - intent: affirm
   examples: |

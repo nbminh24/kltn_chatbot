@@ -1,108 +1,117 @@
 version: "3.1"
 
 # ============================================================================
-# INTENTS - All possible user intentions
+# INTENTS - 29 Core Intents for E-commerce Fashion Chatbot
+# Based on specification: 02_INTENT_LOGIC_TABLE.md
 # ============================================================================
 intents:
-  # Greetings & Farewells
-  - greet
-  - goodbye
-  - thank_you
-  - affirm
-  - deny
+  # ===== NHÓM 1: CHÀO HỎI & GIAO TIẾP CƠ BẢN (4) =====
+  - greet                         # Chào hỏi
+  - goodbye                       # Tạm biệt
+  - thanks                        # Cảm ơn (renamed from thank_you)
+  - bot_identity                  # Hỏi về bot
   
-  # Product Search & Inquiry
-  - search_product
-  - ask_product_price
-  - check_product_availability
-  - ask_product_details
+  # ===== NHÓM 2: TÌM KIẾM & SẢN PHẨM (6) =====
+  - product_search_text           # Tìm sản phẩm theo text
+  - product_search_image          # Tìm sản phẩm bằng ảnh
+  - product_ask_info              # Hỏi chi tiết sản phẩm (material, price, origin)
+  - product_check_stock           # Kiểm tra tồn kho (size, color)
+  - ask_promotion                 # Hỏi về khuyến mãi
+  - product_recommend_context     # Gợi ý sản phẩm theo ngữ cảnh (wedding, beach, work)
   
-  # Order Management
-  - track_order
-  - cancel_order
-  - modify_order
+  # ===== NHÓM 3: SIZE & TƯ VẤN (2) =====
+  - consult_size_chart            # Xem bảng size
+  - consult_size_advice           # Tư vấn size cá nhân (height, weight)
   
-  # FAQ & Policies
-  - ask_shipping_policy
-  - ask_return_policy
-  - ask_payment_methods
-  - ask_warranty
+  # ===== NHÓM 4: HÀNH ĐỘNG MUA HÀNG (3) =====
+  - action_add_cart               # Thêm vào giỏ hàng
+  - action_buy_now                # Mua ngay
+  - action_add_wishlist           # Lưu yêu thích
   
-  # Recommendations
-  - ask_recommendation
-  - compare_products
+  # ===== NHÓM 5: ĐƠN HÀNG & HẬU MÃI (3) =====
+  - order_status_check            # Tra cứu trạng thái đơn hàng
+  - order_cancel_request          # Yêu cầu hủy đơn
+  - order_feedback                # Gửi phản hồi/khiếu nại đơn hàng
   
-  # Support
-  - create_support_ticket
-  - ask_contact_info
+  # ===== NHÓM 6: CHÍNH SÁCH & FAQ (9) =====
+  - faq_store_info                # Thông tin cửa hàng
+  - faq_contact_human             # Gặp nhân viên
+  - faq_payment_method            # Phương thức thanh toán
+  - faq_payment_cod               # Hỏi về Ship COD
+  - faq_shipping_fee              # Hỏi phí ship
+  - faq_shipping_time             # Thời gian giao hàng
+  - faq_shipping_check            # Cho xem hàng trước (đồng kiểm)
+  - faq_return_policy             # Chính sách đổi trả
+  - faq_product_auth              # Hỏi hàng chính hãng
   
-  # Chitchat
-  - bot_challenge
+  # ===== NHÓM 7: FALLBACK (2) =====
+  - out_of_scope_gemini           # Câu hỏi ngoài lề (gọi Gemini AI)
+  - nlu_fallback                  # Không hiểu
   
-  # Fashion E-commerce (NEW)
-  - ask_size_guide
-  - ask_material
-  - ask_available_colors
-  - ask_promotions
-  - ask_delivery_time
-  - ask_fit_style
-  - ask_styling_advice
-  - search_by_occasion
-  - compare_product_details
-  - ask_reviews
-
-  # Advanced E-commerce (NEW)
-  - ask_sizing_advice
-  - ask_product_care
-  - report_order_error
-  - request_exchange_item
-  - report_quality_issue
-  - request_policy_exception
-  - request_stock_notification_conditional
-  - check_discount_logic
-  - ask_product_comparison_contextual
-  
-  # System
-  - nlu_fallback
-  - inform
+  # ===== SYSTEM INTENTS =====
+  - affirm                        # Đồng ý
+  - deny                          # Từ chối
 
 # ============================================================================
-# ENTITIES - Information extracted from user messages
+# ENTITIES - Information extracted from user messages  
 # ============================================================================
 entities:
-  - product_name
-  - product_type
-  - order_number
-  - size
-  - color
-  - brand
-  - category
-  - price_range
-  - occasion
-  - style
-  - material
-  - fit_type
-  - body_type
-  - fit_preference
-  - height
-  - weight
-  - care_property
-  - error_type
-  - quantity
-  - product_to_return
-  - product_to_get
-  - reason
-  - defect_description
-  - policy_type
-  - price_condition
-  - discount_code
-  - context
+  # Product-related
+  - product_name              # Tên sản phẩm
+  - product_type              # Loại sản phẩm (synonym: category)
+  - category                  # Danh mục (áo, quần, giày)
+  - brand                     # Thương hiệu
+  - color                     # Màu sắc
+  - size                      # Size (S, M, L, XL)
+  - material                  # Chất liệu (cotton, polyester)
+  - price_range               # Khoảng giá
+  
+  # Order-related
+  - order_id                  # Mã đơn hàng
+  - order_number              # Số đơn hàng (synonym)
+  - quantity                  # Số lượng
+  
+  # Customer measurements
+  - height                    # Chiều cao
+  - weight                    # Cân nặng
+  - body_type                 # Dáng người
+  
+  # Context & Occasion
+  - context                   # Ngữ cảnh (wedding, beach, work, party, casual, sport)
+  - occasion                  # Dịp (synonym: context)
+  
+  # Information types
+  - info_type                 # Loại thông tin cần hỏi (material, price, origin)
+  
+  # Feedback & Issues
+  - issue_type                # Loại vấn đề (damaged, wrong_item, attitude)
+  - reason                    # Lý do
 
 # ============================================================================
 # SLOTS - Variables to store conversation context
+# Based on specification: 03_DATA_FLOW.md
 # ============================================================================
 slots:
-  # Product-related slots
+  # ===== SESSION & USER CONTEXT =====
+  customer_id:
+    type: float
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  visitor_id:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  session_id:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # ===== PRODUCT CONTEXT =====
   products_found:
     type: bool
     initial_value: false
@@ -122,33 +131,59 @@ slots:
     mappings:
     - type: custom
   
-  last_product:
-    type: any
+  current_product_id:
+    type: float
     influence_conversation: false
     mappings:
     - type: custom
   
-  # Order-related slots
+  current_variant_id:
+    type: float
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # ===== SLOT FILLING FOR CART =====
+  cart_size:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  cart_color:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  cart_quantity:
+    type: float
+    initial_value: 1
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
+  # ===== ORDER CONTEXT =====
+  last_order_id:
+    type: float
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
   last_order:
     type: any
     influence_conversation: false
     mappings:
     - type: custom
   
-  user_jwt_token:
+  # ===== CONVERSATION CONTEXT =====
+  context:
     type: text
     influence_conversation: false
     mappings:
     - type: custom
   
-  # User preferences
-  preferred_category:
-    type: text
-    influence_conversation: false
-    mappings:
-    - type: custom
-  
-  # Fallback tracking
+  # ===== FALLBACK TRACKING =====
   fallback_count:
     type: float
     initial_value: 0
@@ -216,49 +251,49 @@ responses:
   
   # Fashion E-commerce Responses (NEW)
   utter_size_guide:
-  - text: "📏 Bảng size của shop:\n• S: 50-55kg, 1m60-1m65\n• M: 55-65kg, 1m65-1m72\n• L: 65-75kg, 1m72-1m78\n• XL: 75-85kg, 1m78+\n\nBạn muốn mình tư vấn cụ thể hơn không? 😊"
-  - text: "Để chọn size phù hợp:\n1️⃣ Đo chiều cao & cân nặng\n2️⃣ Tham khảo bảng size\n3️⃣ Nếu giữa 2 size, chọn size lớn hơn\n\nBạn cần tư vấn size cụ thể không?"
+  - text: "📏 Size Guide:\n• S: 50-55kg, 160-165cm\n• M: 55-65kg, 165-172cm\n• L: 65-75kg, 172-178cm\n• XL: 75-85kg, 178cm+\n\nWould you like personalized sizing advice? 😊"
+  - text: "To choose the right size:\n1️⃣ Measure height & weight\n2️⃣ Check size chart\n3️⃣ If between sizes, size up\n\nNeed specific size advice?"
   
   utter_material_info:
-  - text: "Sản phẩm này làm từ chất liệu cao cấp, thoáng mát và bền đẹp. Bạn muốn biết về sản phẩm cụ thể nào nhé?"
-  - text: "Shop có nhiều chất liệu: Cotton 100%, Polyester, Blend... Bạn đang xem sản phẩm nào để mình check chi tiết cho bạn? 👕"
+  - text: "This product is made from premium, breathable, and durable materials. Which specific product would you like details about?"
+  - text: "We have various materials: 100% Cotton, Polyester, Blends... Which product are you checking? 👕"
   
   utter_colors_available:
-  - text: "Sản phẩm này có các màu: Đen, Trắng, Xám, Navy. Bạn thích màu nào nhất? 🎨"
-  - text: "Màu nào còn hàng nhỉ... Để mình check cho bạn! Bạn đang xem sản phẩm nào vậy?"
+  - text: "This product comes in: Black, White, Gray, Navy. Which color do you prefer? 🎨"
+  - text: "Let me check which colors are in stock! Which product are you viewing?"
   
   utter_promotions_info:
-  - text: "🎉 Ưu đãi hiện tại:\n• Giảm 20% cho đơn từ 500k\n• Freeship đơn từ 300k\n• Tích điểm đổi quà\n\nNhập mã: FASHION20 khi thanh toán nhé!"
-  - text: "Đang có sale hot đây bạn! 🔥\n- Giảm đến 30% một số items\n- Combo 3 món giảm 25%\n- Freeship toàn quốc\n\nMua ngay kẻo hết! 😊"
+  - text: "🎉 Current promotions:\n• 20% off orders over $50\n• Free shipping over $30\n• Loyalty points rewards\n\nUse code: FASHION20 at checkout!"
+  - text: "Hot sale now! 🔥\n- Up to 30% off selected items\n- 3-piece combo 25% off\n- Free nationwide shipping\n\nShop now before they're gone! 😊"
   
   utter_delivery_info:
-  - text: "⏰ Thời gian giao hàng:\n• Nội thành: 1-2 ngày\n• Ngoại thành: 2-4 ngày\n• Tỉnh: 3-5 ngày\n\nShop ship cực nhanh luôn nhé! 🚚"
-  - text: "Giao hàng nhanh lắm bạn ơi! Thường 2-3 ngày là có hàng rồi. Đặt hôm nay, mặc ngay cuối tuần! 😎"
+  - text: "⏰ Delivery time:\n• City: 1-2 days\n• Suburbs: 2-4 days\n• Provinces: 3-5 days\n\nWe ship super fast! 🚚"
+  - text: "Fast delivery! Usually 2-3 days. Order today, wear this weekend! 😎"
   
   utter_fit_info:
-  - text: "Form áo này là regular fit - vừa vặn, không quá rộng hay ôm. Phù hợp mọi dáng người nhé! 👔"
-  - text: "Shop có đầy đủ form: Slim fit (ôm), Regular (vừa), Oversize (rộng). Bạn thích style nào?"
+  - text: "This is regular fit - not too loose or tight. Suits all body types! 👔"
+  - text: "We have all fits: Slim fit (fitted), Regular (standard), Oversize (loose). What's your style?"
   
   utter_styling_advice:
-  - text: "✨ Gợi ý phối đồ:\n• Áo polo + quần kaki = Lịch sự đi làm\n• Áo thun + jean = Năng động dạo phố\n• Áo sơ mi + quần âu = Sang trọng đi event\n\nBạn muốn outfit cho dịp nào?"
-  - text: "Món này mình recommend phối với:\n🔹 Quần jeans đen/xanh navy\n🔹 Giày sneaker trắng\n🔹 Thêm đồng hồ/vòng tay cho trendy!\n\nBạn có muốn xem outfit mẫu không? 📸"
+  - text: "✨ Styling suggestions:\n• Polo + chinos = Office smart\n• T-shirt + jeans = Casual street\n• Dress shirt + slacks = Event elegant\n\nWhat occasion?"
+  - text: "I recommend pairing this with:\n🔹 Black/navy jeans\n🔹 White sneakers\n🔹 Add watch/bracelet for trend!\n\nWant to see outfit samples? 📸"
   
   utter_occasion_suggestions:
-  - text: "Đi làm thì nên chọn:\n👔 Áo polo, sơ mi\n👖 Quần kaki, âu\n👞 Giày da/loafer\n\nMình có thể gợi ý cụ thể hơn nếu bạn cần!"
-  - text: "Outfit theo dịp:\n• Đi làm: Smart casual\n• Đi chơi: Streetwear\n• Date: Neat & clean\n• Du lịch: Thoải mái\n\nBạn cần outfit cho dịp nào nào?"
+  - text: "For work, choose:\n👔 Polo, dress shirts\n👖 Chinos, slacks\n👞 Leather/loafers\n\nNeed specific recommendations?"
+  - text: "Outfit by occasion:\n• Work: Smart casual\n• Hangout: Streetwear\n• Date: Neat & clean\n• Travel: Comfortable\n\nWhat occasion?"
   
   utter_product_comparison:
-  - text: "Để mình so sánh 2 sản phẩm cho bạn! Bạn đang phân vân giữa món nào và món nào?"
-  - text: "Okay! Cho mình biết 2 sản phẩm bạn muốn so sánh để mình phân tích giá/chất lượng/style cho bạn nhé!"
+  - text: "Let me compare products for you! Which two items are you deciding between?"
+  - text: "Sure! Tell me which 2 products to compare for price/quality/style analysis!"
   
   utter_reviews_info:
-  - text: "Sản phẩm này được đánh giá rất cao! ⭐⭐⭐⭐⭐\n• Chất liệu tốt\n• Form đẹp\n• Giá hợp lý\n\nNhiều bạn đã mua và rất hài lòng đấy!"
-  - text: "Review từ khách hàng:\n💯 Chất lượng tốt\n💯 Đúng size\n💯 Màu đẹp như hình\n\nBạn cứ yên tâm order nhé! 😊"
+  - text: "This product is highly rated! ⭐⭐⭐⭐⭐\n• Great quality\n• Perfect fit\n• Fair price\n\nMany customers love it!"
+  - text: "Customer reviews:\n💯 Good quality\n💯 True to size\n💯 Color as shown\n\nOrder with confidence! 😊"
   
   # Support responses
   utter_support_ticket_created:
-  - text: "Đã tạo ticket hỗ trợ thành công! 🎫\nTeam support sẽ liên hệ bạn trong 24h. Cảm ơn bạn đã kiên nhẫn!"
-  - text: "Ticket của bạn đã được ghi nhận! ✅\nBộ phận hỗ trợ sẽ xử lý và phản hồi sớm nhất. Xin cảm ơn!"
+  - text: "Support ticket created successfully! 🎫\nOur team will contact you within 24h. Thank you for your patience!"
+  - text: "Your ticket has been recorded! ✅\nSupport team will process and respond ASAP. Thank you!"
   
   # Clarification responses
   utter_ask_rephrase:
@@ -270,45 +305,41 @@ responses:
 
 # ============================================================================
 # ACTIONS - Custom actions implemented in actions.py
+# Mapped to 29 intents according to specification
 # ============================================================================
 actions:
-  # Product actions
-  - action_search_products
-  - action_get_product_price
-  - action_check_availability
-  - action_get_product_details
+  # ===== PRODUCT SEARCH & INQUIRY =====
+  - action_search_products              # product_search_text
+  - action_search_products_by_image     # product_search_image
+  - action_get_product_info             # product_ask_info
+  - action_check_stock                  # product_check_stock
+  - action_get_promotions               # ask_promotion
+  - action_recommend_by_context         # product_recommend_context
   
-  # Order actions
-  - action_track_order
-  - action_cancel_order_request
+  # ===== SIZE & CONSULTATION =====
+  - action_get_size_chart               # consult_size_chart
+  - action_get_sizing_advice            # consult_size_advice
   
-  # Policy actions
-  - action_get_shipping_policy
-  - action_get_return_policy
-  - action_get_payment_methods
-  - action_get_warranty_policy
+  # ===== CART & PURCHASE ACTIONS =====
+  - action_add_to_cart                  # action_add_cart
+  - action_buy_now                      # action_buy_now
+  - action_add_to_wishlist              # action_add_wishlist
   
-  # Recommendation actions
-  - action_recommend_products
-  - action_compare_products
+  # ===== ORDER MANAGEMENT =====
+  - action_check_order_status           # order_status_check
+  - action_cancel_order                 # order_cancel_request
+  - action_create_feedback_ticket       # order_feedback
   
-  # Support actions
-  - action_create_support_ticket
-  - action_fallback
+  # ===== SUPPORT & FAQ =====
+  - action_create_support_ticket        # faq_contact_human
   
-  # Utility actions
+  # ===== FALLBACK & AI =====
+  - action_ask_gemini                   # out_of_scope_gemini
+  - action_fallback                     # nlu_fallback
+  
+  # ===== UTILITY ACTIONS =====
   - action_default_ask_affirmation
-  
-  # Advanced e-commerce actions (NEW)
-  - action_get_sizing_advice
-  - action_get_styling_advice
-  - action_get_product_care
-  - action_report_order_error
-  - action_request_return_or_exchange
-  - action_report_quality_issue
-  - action_handle_policy_exception
-  - action_set_stock_notification
-  - action_check_discount
+  - action_reset_slots
 
 # ============================================================================
 # SESSION CONFIGURATION

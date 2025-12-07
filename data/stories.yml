@@ -45,6 +45,26 @@ stories:
   - intent: thank_you
   - action: utter_you_are_welcome
 
+- story: Generic inquiry then specific search
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_details
+  - action: action_get_product_details
+
+- story: Quick product search without greeting
+  steps:
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
 # ============================================================================
 # 2. ORDER TRACKING STORIES
 # ============================================================================
@@ -144,6 +164,71 @@ stories:
 # ============================================================================
 # 6. COMPLEX INTERACTIVE STORIES
 # ============================================================================
+- story: User asks for product details
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_product
+    entities:
+    - product_type: "laptop"
+  - action: action_search_products
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: ask_product_price
+  - action: action_get_product_price
+
+- story: User asks for general product introduction
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: Multi-turn product inquiry and purchase
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: ask_sizing_advice
+  - action: action_get_sizing_advice
+  - intent: ask_styling_advice
+  - action: action_get_styling_advice
+  - intent: check_product_availability
+  - action: action_check_availability
+
+- story: Product search then order tracking
+  steps:
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: track_order
+  - action: action_track_order
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: Sizing and styling consultation
+  steps:
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_sizing_advice
+  - action: action_get_sizing_advice
+  - intent: ask_styling_advice
+  - action: action_get_styling_advice
+  - intent: check_discount_logic
+  - action: action_check_discount
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
 - story: Complete shopping journey
   steps:
   - intent: greet
@@ -179,6 +264,46 @@ stories:
 # ============================================================================
 # 7. CHITCHAT STORIES
 # ============================================================================
+- story: Full product consultation - KLTN style
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_sizing_advice
+  - action: action_get_sizing_advice
+  - intent: ask_styling_advice
+  - action: action_get_styling_advice
+  - intent: check_discount_logic
+  - action: action_check_discount
+  - intent: check_product_availability
+  - action: action_check_availability
+  - intent: thank_you
+  - action: utter_you_are_welcome
+
+- story: Order issue then support ticket
+  steps:
+  - intent: track_order
+  - action: action_track_order
+  - intent: report_order_error
+  - action: action_report_order_error
+  - intent: affirm
+  - action: action_create_support_ticket
+  - action: utter_support_ticket_created
+
+- story: Product discovery journey
+  steps:
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: search_product
+  - action: action_search_products
+  - intent: ask_product_details
+  - action: action_get_product_details
+  - intent: ask_product_price
+  - action: action_get_product_price
+  - intent: check_product_availability
+  - action: action_check_availability
+
 - story: Bot challenge and continue
   steps:
   - intent: bot_challenge

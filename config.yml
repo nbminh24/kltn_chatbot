@@ -1,12 +1,13 @@
 # Rasa Configuration File for E-commerce Chatbot
-# Language: English (expandable to Vietnamese)
+# Language: Vietnamese & English (Bilingual Support)
 # Rasa Version: 3.x
 
 # Recipe version for Rasa 3.x
 recipe: default.v1
 
-# Language and pipeline configuration
-language: en
+# Language and pipeline configuration  
+# Using 'vi' for Vietnamese primary, but supports English too
+language: vi
 
 # NLU Pipeline - Optimized for English with potential for multilingual
 pipeline:
@@ -24,9 +25,11 @@ pipeline:
   
   # Intent Classification
   - name: DIETClassifier
-    epochs: 50
+    epochs: 30
     constrain_similarities: true
     model_confidence: softmax
+    evaluate_every_number_of_epochs: 10
+    evaluate_on_number_of_examples: 50
   
   # Entity Extraction
   - name: EntitySynonymMapper
@@ -34,14 +37,16 @@ pipeline:
 # Dialogue Management Policies
 policies:
   - name: MemoizationPolicy
-    max_history: 5
+    max_history: 3
   - name: RulePolicy
     core_fallback_threshold: 0.3
     core_fallback_action_name: action_fallback
   - name: TEDPolicy
-    max_history: 5
-    epochs: 50
+    max_history: 3
+    epochs: 30
     constrain_similarities: true
+    evaluate_every_number_of_epochs: 10
+    evaluate_on_number_of_examples: 50
 
 # Assistant ID
 assistant_id: kltn_ecommerce_chatbot
