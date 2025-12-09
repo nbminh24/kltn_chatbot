@@ -28,18 +28,64 @@ rules:
   - action: utter_i_am_bot
 
 # ============================================================================
-# 3. FALLBACK RULES
+# 3. CORE ACTIONS - ALWAYS HANDLE (Fix Story Conflict)
+# ============================================================================
+# These rules allow repeated actions regardless of conversation context
+# This fixes the "Ask 2 times crash" bug
+
+- rule: Always search products
+  steps:
+  - intent: search_product
+  - action: action_search_products
+
+- rule: Always track order
+  steps:
+  - intent: track_order
+  - action: action_track_order
+
+# ============================================================================
+# 4. FALLBACK & GEMINI AI RULES
 # ============================================================================
 - rule: Fallback rule - low confidence
   steps:
   - intent: nlu_fallback
-  - action: action_fallback
+  - action: action_ask_gemini
 
-# Multi-turn fallback handling is in stories.yml
-# Rules must be single-turn only
+- rule: Ask Gemini for open-ended queries
+  steps:
+  - intent: open_ended_query
+  - action: action_ask_gemini
+
+- rule: Ask Gemini for advice
+  steps:
+  - intent: ask_advice
+  - action: action_ask_gemini_with_history
+
+- rule: Ask Gemini for general questions
+  steps:
+  - intent: ask_general_question
+  - action: action_ask_gemini
+
+# Removed: Legacy fallback (conflicts with "Fallback rule - low confidence")
+# Now using Gemini AI for all fallback scenarios
 
 # ============================================================================
-# 4. DIRECT ACTION RULES (Single-turn interactions)
+# 4.5 CART & PURCHASE RULES (Phase 3)
+# ============================================================================
+- rule: View cart anytime
+  steps:
+  - intent: view_cart
+  - action: action_view_cart
+
+# Note: Cart form flow temporarily simplified
+# Full form integration requires more complex story/rule setup
+- rule: Add to cart direct
+  steps:
+  - intent: add_to_cart
+  - action: action_add_to_cart
+
+# ============================================================================
+# 5. DIRECT ACTION RULES (Single-turn interactions)
 # ============================================================================
 - rule: Ask contact information
   steps:
@@ -67,7 +113,7 @@ rules:
   - action: action_get_warranty_policy
 
 # ============================================================================
-# 5. SUPPORT TICKET RULES
+# 6. SUPPORT TICKET RULES
 # ============================================================================
 - rule: Create support ticket on explicit request
   steps:
@@ -76,7 +122,7 @@ rules:
   - action: utter_support_ticket_created
 
 # ============================================================================
-# 6. FASHION E-COMMERCE RULES (Single-turn Q&A)
+# 7. FASHION E-COMMERCE RULES (Single-turn Q&A)
 # ============================================================================
 - rule: Provide size guide
   steps:
@@ -114,7 +160,7 @@ rules:
   - action: utter_reviews_info
 
 # ============================================================================
-# 7. ADVANCED E-COMMERCE RULES (Single-turn triggers)
+# 8. ADVANCED E-COMMERCE RULES (Single-turn triggers)
 # ============================================================================
 - rule: Get sizing advice
   steps:
@@ -162,7 +208,7 @@ rules:
   - action: action_compare_products
 
 # ============================================================================
-# 8. ACTIVATION RULES (Always listen for these)
+# 9. ACTIVATION RULES (Always listen for these)
 # ============================================================================
 - rule: Always respond to greet in the middle of conversation
   conversation_start: false

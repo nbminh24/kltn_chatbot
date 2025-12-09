@@ -9,6 +9,7 @@ from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet, FollowupAction
 import logging
 import time
+import re
 
 from .api_client import get_api_client
 from .gemini_client import get_gemini_client
@@ -17,11 +18,72 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def extract_product_name(user_text: str) -> str:
+    """
+    Extract product name from user input by removing common phrases.
+    
+    Examples:
+        "i want to find a tanktop" → "tanktop"
+        "tôi cần tìm áo khoác" → "áo khoác"
+        "show me blue shirts" → "blue shirts"
+        "tanktop" → "tanktop" (already clean)
+    
+    Args:
+        user_text: Raw user input text
+    
+    Returns:
+        Cleaned product name/keyword
+    """
+    if not user_text:
+        return ""
+    
+    # Convert to lowercase for pattern matching
+    text = user_text.strip()
+    
+    # Remove common English prefixes (case-insensitive)
+    en_patterns = [
+        r'^i\s+want\s+to\s+(find|buy|see|search)\s+(a\s+|an\s+|some\s+)?',
+        r'^find\s+(me\s+)?(a\s+|an\s+|some\s+)?',
+        r'^show\s+(me\s+)?(a\s+|an\s+|some\s+)?',
+        r'^search\s+(for\s+)?(a\s+|an\s+|some\s+)?',
+        r'^looking\s+for\s+(a\s+|an\s+|some\s+)?',
+        r'^(can|could)\s+you\s+(find|show)\s+(me\s+)?(a\s+|an\s+)?',
+        r'^i\s+need\s+(a\s+|an\s+|some\s+)?',
+    ]
+    
+    # Remove common Vietnamese prefixes
+    vi_patterns = [
+        r'^tôi\s+cần\s+(tìm|mua)\s+',
+        r'^tôi\s+muốn\s+(tìm|mua)\s+',
+        r'^tìm\s+(cho\s+tôi\s+)?',
+        r'^cho\s+tôi\s+(xem|tìm)\s+',
+        r'^tìm\s+giúp\s+tôi\s+',
+        r'^mua\s+cho\s+tôi\s+',
+        r'^có\s+',
+    ]
+    
+    # Apply all patterns
+    for pattern in en_patterns + vi_patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+    
+    # Clean up extra spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+
+# ============================================================================
 # PRODUCT SEARCH & INQUIRY ACTIONS
 # ============================================================================
 
 class ActionSearchProducts(Action):
-    """Search for products based on user query"""
+    """
+    Search for products based on user query
+    REFACTORED: Simplified and fixed backend response handling
+    """
     
     def name(self) -> Text:
         return "action_search_products"
@@ -33,88 +95,93 @@ class ActionSearchProducts(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        action_start = time.time()
-        logger.info("=" * 50)
-        logger.info("🚀 Starting action_search_products")
-        
-        # Get search query from entities or user message
+        # 1. Get search query from entities or user message
         product_type = next(tracker.get_latest_entity_values("product_type"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
-        query = product_type or product_name or tracker.latest_message.get("text", "")
+        # Priority: entity > full text
+        search_query = product_name or product_type
         
-        if not query:
-            dispatcher.utter_message(text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊")
+        if not search_query:
+            # Fallback: extract from full user text
+            user_text = tracker.latest_message.get('text', '')
+            search_query = extract_product_name(user_text) if user_text else None
+        
+        logger.info(f"🔍 Searching for: {search_query}")
+        
+        if not search_query:
+            dispatcher.utter_message(
+                text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊"
+            )
             return []
         
-        logger.info(f"Searching products with query: {query}")
-        
-        # Call backend API with timing
-        api_client = get_api_client()
-        start_time = time.time()
-        result = api_client.search_products(query, limit=10)
-        api_time = time.time() - start_time
-        logger.info(f"⏱️ API search_products took {api_time:.3f}s")
-        
-        if result.get("error"):
+        # 2. Call Backend API
+        try:
+            api_client = get_api_client()
+            result = api_client.search_products(search_query, limit=5)
+            
+            logger.info(f"� API Response: {type(result)}, keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
+            
+            # 3. Handle different JSON structures (CRITICAL FIX)
+            # Backend might return: {"products": [...]} or {"data": [...]} or [...]
+            products = []
+            if isinstance(result, list):
+                products = result
+            elif isinstance(result, dict):
+                # Try both 'products' and 'data' keys
+                products = result.get("products") or result.get("data") or []
+            
+            # Check for errors
+            if isinstance(result, dict) and result.get("error"):
+                logger.error(f"❌ API Error: {result.get('error')}")
+                dispatcher.utter_message(
+                    text="I'm having trouble connecting to the product catalog right now. 🙏"
+                )
+                return [SlotSet("products_found", False)]
+            
+            # 4. Display results
+            if not products:
+                dispatcher.utter_message(
+                    text=f"Sorry, I couldn't find any products matching '{search_query}' 😅\n\nCould you describe it differently?"
+                )
+                return [SlotSet("products_found", False)]
+            
+            # Format message
+            message = f"Found {len(products)} products for '{search_query}':\n\n"
+            for i, p in enumerate(products[:5], 1):  # Show top 5
+                name = p.get("name", "Unknown Product")
+                price = p.get("selling_price") or p.get("price", 0)
+                stock = p.get("total_stock") or p.get("stock", 0)
+                
+                # Format price
+                if isinstance(price, (int, float)) and price > 0:
+                    price_str = f"{price:,.0f}₫"
+                else:
+                    price_str = "Contact for price"
+                
+                stock_icon = "✅" if stock > 0 else "😢"
+                message += f"{i}. **{name}** - {price_str} {stock_icon}\n"
+            
+            if len(products) > 5:
+                message += f"\n_(+{len(products) - 5} more products)_\n"
+            
+            message += "\n💡 Which one interests you? I can provide more details! 😊"
+            
+            dispatcher.utter_message(text=message)
+            
+            # Save to slots
+            return [
+                SlotSet("products_found", True),
+                SlotSet("last_search_query", search_query),
+                SlotSet("last_products", products[:10])
+            ]
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in ActionSearchProducts: {e}")
             dispatcher.utter_message(
-                text=f"Oops, our system is a bit busy right now. Could you try again in a moment? Sorry about that! 🙏"
+                text="Oops, something went wrong. Please try again later! 🙏"
             )
             return [SlotSet("products_found", False)]
-        
-        products = result.get("products", [])
-        
-        if not products:
-            dispatcher.utter_message(
-                text=f"Hmm, I couldn't find anything matching '{query}' 😅\n\nCould you describe it differently? Or would you like me to show you what's popular right now?"
-            )
-            return [SlotSet("products_found", False)]
-        
-        # Format and display results
-        if len(products) == 1:
-            response = f"Perfect! I found this one for you:\n\n"
-        else:
-            response = f"Great! I found {len(products)} products that match what you're looking for:\n\n"
-        
-        for i, product in enumerate(products[:5], 1):  # Limit to 5 for better UX
-            name = product.get("name", "Unknown")
-            price = product.get("selling_price", 0)
-            stock = product.get("total_stock", 0)
-            
-            # Format price with comma separator if it's a number
-            if isinstance(price, (int, float)) and price > 0:
-                price_str = f"{price:,.0f}₫"
-            else:
-                price_str = "Contact for price"
-            
-            response += f"{i}. **{name}**\n"
-            response += f"   Price: {price_str}"
-            
-            if stock > 0:
-                response += f" - In stock ✅\n\n"
-            else:
-                response += f" - Out of stock 😢\n\n"
-        
-        if len(products) > 5:
-            response += f"_(Showing 5 first, there are {len(products) - 5} more!)_\n\n"
-        
-        # Natural follow-up suggestions
-        if len(products) == 1:
-            response += "Would you like to know more about sizing, styling tips, or anything else? 😊"
-        else:
-            response += "Which one catches your eye? I can tell you more about any of them, or suggest similar items if you'd like! 😊"
-        
-        dispatcher.utter_message(text=response)
-        
-        action_time = time.time() - action_start
-        logger.info(f"✅ action_search_products completed in {action_time:.3f}s")
-        logger.info("=" * 50)
-        
-        return [
-            SlotSet("products_found", True),
-            SlotSet("last_search_query", query),
-            SlotSet("last_products", products)
-        ]
 
 
 class ActionGetSizingAdvice(Action):
@@ -1182,21 +1249,16 @@ class ActionRecommendProducts(Action):
         
         products = result["data"]
         
-        # Use Gemini to generate personalized recommendations
-        gemini_client = get_gemini_client()
-        rag_result = gemini_client.generate_response_with_products(
-            user_query,
-            products
-        )
+        # Simple product list (Gemini integration optional)
+        response = "Here are some popular products:\n\n"
+        for i, product in enumerate(products[:3], 1):
+            name = product.get('name', 'Unknown')
+            price = product.get('selling_price', 0)
+            price_str = f"{price:,.0f}₫" if price > 0 else "Contact for price"
+            response += f"{i}. {name} - {price_str}\n"
         
-        if rag_result.get("success"):
-            dispatcher.utter_message(text=rag_result["response"])
-        else:
-            # Fallback to simple list
-            response = "Here are some popular products:\n\n"
-            for i, product in enumerate(products[:3], 1):
-                response += f"{i}. {product.get('name')} - ${product.get('price')}\n"
-            dispatcher.utter_message(text=response)
+        response += "\nWould you like to know more about any of these? 😊"
+        dispatcher.utter_message(text=response)
         
         return [SlotSet("last_products", products)]
 
@@ -1282,6 +1344,322 @@ class ActionCompareProducts(Action):
 
 
 # ============================================================================
+# CART & PURCHASE ACTIONS - Phase 3 Implementation
+# ============================================================================
+
+class ActionAddToCart(Action):
+    """
+    Add product to cart with size, color, and quantity
+    Uses Rasa Forms for slot filling
+    """
+    
+    def name(self) -> Text:
+        return "action_add_to_cart"
+    
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        
+        # Get filled slots from form
+        product_id = tracker.get_slot("current_product_id")
+        size = tracker.get_slot("cart_size")
+        color = tracker.get_slot("cart_color")
+        quantity = tracker.get_slot("cart_quantity") or 1
+        
+        logger.info(f"🛒 Adding to cart: product_id={product_id}, size={size}, color={color}, qty={quantity}")
+        
+        # Validate required fields
+        if not product_id:
+            dispatcher.utter_message(
+                text="I need to know which product you want to add. Could you search for a product first? 😊"
+            )
+            return []
+        
+        if not size:
+            dispatcher.utter_message(
+                text="What size would you like? (S, M, L, XL, etc.)"
+            )
+            return []
+        
+        if not color:
+            dispatcher.utter_message(
+                text="What color would you prefer?"
+            )
+            return []
+        
+        # Call Backend API to add to cart
+        try:
+            api_client = get_api_client()
+            
+            # Prepare cart data
+            cart_data = {
+                "product_id": int(product_id),
+                "size": size,
+                "color": color,
+                "quantity": int(quantity)
+            }
+            
+            logger.info(f"📤 Calling backend add_to_cart API with: {cart_data}")
+            
+            # Call API (assuming you have this method in api_client)
+            result = api_client.add_to_cart(cart_data)
+            
+            # Handle response
+            if isinstance(result, dict):
+                if result.get("success") or result.get("data"):
+                    # Success
+                    product_name = result.get("product_name", "Product")
+                    dispatcher.utter_message(
+                        text=f"✅ Added {product_name} ({size}, {color}) to your cart!\n\n"
+                             f"Quantity: {quantity}\n\n"
+                             f"Would you like to continue shopping or check out? 🛍️"
+                    )
+                    
+                    # Reset cart slots for next add
+                    return [
+                        SlotSet("cart_size", None),
+                        SlotSet("cart_color", None),
+                        SlotSet("cart_quantity", 1)
+                    ]
+                elif result.get("error"):
+                    # API error
+                    error_msg = result.get("error", "Unknown error")
+                    logger.error(f"❌ Backend error: {error_msg}")
+                    dispatcher.utter_message(
+                        text=f"Sorry, I couldn't add that to your cart. {error_msg} 😅"
+                    )
+            else:
+                # Unexpected response
+                logger.error(f"❌ Unexpected API response: {result}")
+                dispatcher.utter_message(
+                    text="Something went wrong while adding to cart. Please try again! 🙏"
+                )
+        
+        except AttributeError:
+            # API client doesn't have add_to_cart method yet
+            logger.warning("⚠️ api_client.add_to_cart() not implemented yet")
+            dispatcher.utter_message(
+                text=f"✅ (Mock) Added to cart: Size {size}, Color {color}, Qty {quantity}\n\n"
+                     f"💡 Note: Backend API integration pending."
+            )
+            return [
+                SlotSet("cart_size", None),
+                SlotSet("cart_color", None),
+                SlotSet("cart_quantity", 1)
+            ]
+        
+        except Exception as e:
+            logger.error(f"❌ Exception in add_to_cart: {e}")
+            dispatcher.utter_message(
+                text="Oops, something went wrong. Please try again later! 🙏"
+            )
+        
+        return []
+
+
+class ActionViewCart(Action):
+    """View current cart contents"""
+    
+    def name(self) -> Text:
+        return "action_view_cart"
+    
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        
+        logger.info("🛒 Viewing cart")
+        
+        try:
+            api_client = get_api_client()
+            result = api_client.get_cart()
+            
+            if isinstance(result, dict) and result.get("items"):
+                items = result.get("items", [])
+                total = result.get("total", 0)
+                
+                message = "🛍️ Your Cart:\n\n"
+                for i, item in enumerate(items, 1):
+                    name = item.get("product_name", "Product")
+                    size = item.get("size", "")
+                    color = item.get("color", "")
+                    qty = item.get("quantity", 1)
+                    price = item.get("price", 0)
+                    
+                    message += f"{i}. {name} ({size}, {color}) x{qty} - {price:,.0f}₫\n"
+                
+                message += f"\n**Total: {total:,.0f}₫**\n\n"
+                message += "Ready to check out? 😊"
+                
+                dispatcher.utter_message(text=message)
+            else:
+                dispatcher.utter_message(
+                    text="Your cart is empty! 🛒\n\nWould you like to search for products? 😊"
+                )
+        
+        except AttributeError:
+            logger.warning("⚠️ api_client.get_cart() not implemented yet")
+            dispatcher.utter_message(
+                text="🛒 (Mock) Your cart:\n\n"
+                     "1. Sample Product (M, Blue) x1 - 150,000₫\n\n"
+                     "💡 Note: Backend API integration pending."
+            )
+        except Exception as e:
+            logger.error(f"❌ Exception in view_cart: {e}")
+            dispatcher.utter_message(
+                text="I couldn't retrieve your cart right now. Please try again! 🙏"
+            )
+        
+        return []
+
+
+# ============================================================================
+# GEMINI AI ACTIONS - Open-ended Query Handling
+# ============================================================================
+
+class ActionAskGemini(Action):
+    """
+    Handle open-ended queries using Gemini AI
+    REFACTORED: Simplified prompt structure
+    """
+    
+    def name(self) -> Text:
+        return "action_ask_gemini"
+    
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        
+        user_message = tracker.latest_message.get('text', '')
+        
+        if not user_message:
+            dispatcher.utter_message(text="Could you repeat that? 😊")
+            return []
+        
+        logger.info(f"🤖 ActionAskGemini: {user_message[:50]}...")
+        
+        # Get Gemini client (Singleton)
+        gemini = get_gemini_client()
+        
+        if not gemini or not gemini.model:
+            logger.warning("⚠️ Gemini not available")
+            dispatcher.utter_message(
+                text="I can help with product searches, sizing, and style advice! What would you like to know? 😊"
+            )
+            return []
+        
+        # Create simple prompt with context
+        prompt = f"""You are a helpful fashion sales assistant.
+User said: "{user_message}"
+
+Please answer in English, be concise (2-3 sentences) and helpful. 
+If it's chitchat, be friendly. If it's about fashion advice, give practical suggestions."""
+        
+        # Call Gemini
+        result = gemini.handle_open_ended_query(prompt)
+        
+        if isinstance(result, dict) and result.get("success") and result.get("response"):
+            dispatcher.utter_message(text=result["response"])
+            dispatcher.utter_message(text="Can I help with anything else? 😊")
+        else:
+            dispatcher.utter_message(
+                text="I'm here to help with products, styling, and fashion advice! What would you like to know? 😊"
+            )
+        
+        return []
+
+
+class ActionAskGeminiWithHistory(Action):
+    """
+    Handle open-ended queries with conversation history
+    Provides contextual responses based on previous messages
+    """
+    
+    def name(self) -> Text:
+        return "action_ask_gemini_with_history"
+    
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        
+        user_message = tracker.latest_message.get('text', '')
+        
+        if not user_message:
+            dispatcher.utter_message(
+                text="I didn't catch that. Could you please repeat? 😊"
+            )
+            return []
+        
+        logger.info(f"🤖 ActionAskGeminiWithHistory: Processing query with history")
+        
+        # Get Gemini client
+        gemini_client = get_gemini_client()
+        
+        if not gemini_client.enabled:
+            logger.warning("⚠️ Gemini is disabled")
+            dispatcher.utter_message(
+                text="I can help you with various questions! What would you like to know? 😊"
+            )
+            return []
+        
+        # Build conversation history
+        conversation_history = []
+        events = tracker.events
+        
+        for event in events[-10:]:  # Last 10 messages
+            if event.get('event') == 'user':
+                conversation_history.append({
+                    'role': 'user',
+                    'text': event.get('text', '')
+                })
+            elif event.get('event') == 'bot':
+                conversation_history.append({
+                    'role': 'assistant',
+                    'text': event.get('text', '')
+                })
+        
+        if not conversation_history:
+            logger.warning("⚠️ No conversation history found")
+            dispatcher.utter_message(text="Let's start fresh! What would you like to know? 😊")
+            return []
+        
+        # Add e-commerce context
+        context = """You are a knowledgeable fashion e-commerce assistant.
+        Use the conversation history to provide contextual, helpful responses.
+        Reference previous topics when relevant."""
+        
+        # Generate with history
+        result = gemini_client.generate_response_with_context(
+            user_query=user_message,
+            context=context,
+            conversation_history=conversation_history
+        )
+        
+        if result.get("success") and result.get("response"):
+            logger.info(f"✅ Gemini with history responded successfully")
+            dispatcher.utter_message(text=result["response"])
+        else:
+            logger.error(f"❌ Gemini with history failed: {result.get('error')}")
+            # Fallback to simple response
+            dispatcher.utter_message(
+                text="I'm here to help! What would you like to know? 😊"
+            )
+        
+        return []
+
+
+# ============================================================================
 # FALLBACK & SUPPORT ACTIONS
 # ============================================================================
 
@@ -1304,41 +1682,27 @@ class ActionFallback(Action):
         
         logger.info(f"Fallback triggered for message: {user_message} (intent: {intent}, confidence: {confidence})")
         
-        # Log fallback for improvement
-        api_client = get_api_client()
-        api_client.log_fallback(user_message, intent, confidence)
+        # Removed: Backend logging (causes 401 error when backend offline)
+        # api_client = get_api_client()
+        # api_client.log_fallback(user_message, intent, confidence)
         
         # Try to use Gemini for open-ended queries
         gemini_client = get_gemini_client()
         
-        # Get conversation history
-        events = tracker.events
-        conversation_history = []
-        for event in events[-6:]:  # Last 3 exchanges
-            if event.get("event") == "user":
-                conversation_history.append({
-                    "role": "user",
-                    "text": event.get("text", "")
-                })
-            elif event.get("event") == "bot":
-                conversation_history.append({
-                    "role": "assistant",
-                    "text": event.get("text", "")
-                })
-        
-        # Try RAG with Gemini if enabled
-        if gemini_client.enabled:
-            rag_result = gemini_client.handle_open_ended_query(
-                user_message,
-                conversation_history
-            )
+        # Check if Gemini is available
+        if gemini_client and gemini_client.model:
+            # Create simple prompt
+            prompt = f"""You are a helpful fashion e-commerce assistant.
+User said: "{user_message}"
+
+Please answer in English, be concise (2-3 sentences) and helpful."""
+            
+            rag_result = gemini_client.handle_open_ended_query(prompt)
             
             if rag_result.get("success") and rag_result.get("response"):
-                logger.info(f"RAG successfully handled fallback: {user_message}")
+                logger.info(f"✅ Gemini handled fallback: {user_message[:50]}...")
                 dispatcher.utter_message(text=rag_result["response"])
-                dispatcher.utter_message(
-                    text="Can I help you with anything else? 😊"
-                )
+                dispatcher.utter_message(text="Can I help you with anything else? 😊")
                 return []
         
         # Standard fallback if RAG fails or disabled

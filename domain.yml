@@ -5,52 +5,77 @@ version: "3.1"
 # Based on specification: 02_INTENT_LOGIC_TABLE.md
 # ============================================================================
 intents:
-  # ===== NHÓM 1: CHÀO HỎI & GIAO TIẾP CƠ BẢN (4) =====
-  - greet                         # Chào hỏi
-  - goodbye                       # Tạm biệt
-  - thanks                        # Cảm ơn (renamed from thank_you)
-  - bot_identity                  # Hỏi về bot
+  # ===== GREETINGS & BASIC =====
+  - greet
+  - goodbye
+  - thank_you
+  - affirm
+  - deny
   
-  # ===== NHÓM 2: TÌM KIẾM & SẢN PHẨM (6) =====
-  - product_search_text           # Tìm sản phẩm theo text
-  - product_search_image          # Tìm sản phẩm bằng ảnh
-  - product_ask_info              # Hỏi chi tiết sản phẩm (material, price, origin)
-  - product_check_stock           # Kiểm tra tồn kho (size, color)
-  - ask_promotion                 # Hỏi về khuyến mãi
-  - product_recommend_context     # Gợi ý sản phẩm theo ngữ cảnh (wedding, beach, work)
+  # ===== PRODUCT SEARCH & INQUIRY =====
+  - search_product
+  - ask_product_price
+  - check_product_availability
+  - ask_product_details
   
-  # ===== NHÓM 3: SIZE & TƯ VẤN (2) =====
-  - consult_size_chart            # Xem bảng size
-  - consult_size_advice           # Tư vấn size cá nhân (height, weight)
+  # ===== CART & PURCHASE =====
+  - add_to_cart
+  - view_cart
+  - remove_from_cart
   
-  # ===== NHÓM 4: HÀNH ĐỘNG MUA HÀNG (3) =====
-  - action_add_cart               # Thêm vào giỏ hàng
-  - action_buy_now                # Mua ngay
-  - action_add_wishlist           # Lưu yêu thích
+  # ===== ORDER MANAGEMENT =====
+  - track_order
+  - cancel_order
+  - modify_order
   
-  # ===== NHÓM 5: ĐƠN HÀNG & HẬU MÃI (3) =====
-  - order_status_check            # Tra cứu trạng thái đơn hàng
-  - order_cancel_request          # Yêu cầu hủy đơn
-  - order_feedback                # Gửi phản hồi/khiếu nại đơn hàng
+  # ===== POLICIES & FAQ =====
+  - ask_shipping_policy
+  - ask_return_policy
+  - ask_payment_methods
+  - ask_warranty
   
-  # ===== NHÓM 6: CHÍNH SÁCH & FAQ (9) =====
-  - faq_store_info                # Thông tin cửa hàng
-  - faq_contact_human             # Gặp nhân viên
-  - faq_payment_method            # Phương thức thanh toán
-  - faq_payment_cod               # Hỏi về Ship COD
-  - faq_shipping_fee              # Hỏi phí ship
-  - faq_shipping_time             # Thời gian giao hàng
-  - faq_shipping_check            # Cho xem hàng trước (đồng kiểm)
-  - faq_return_policy             # Chính sách đổi trả
-  - faq_product_auth              # Hỏi hàng chính hãng
+  # ===== RECOMMENDATIONS =====
+  - ask_recommendation
+  - compare_products
   
-  # ===== NHÓM 7: FALLBACK (2) =====
-  - out_of_scope_gemini           # Câu hỏi ngoài lề (gọi Gemini AI)
-  - nlu_fallback                  # Không hiểu
+  # ===== SUPPORT =====
+  - create_support_ticket
+  - ask_contact_info
   
-  # ===== SYSTEM INTENTS =====
-  - affirm                        # Đồng ý
-  - deny                          # Từ chối
+  # ===== CHITCHAT =====
+  - bot_challenge
+  
+  # ===== FASHION SPECIFIC =====
+  - ask_size_guide
+  - ask_material
+  - ask_available_colors
+  - ask_promotions
+  - ask_delivery_time
+  - ask_fit_style
+  - ask_styling_advice
+  - search_by_occasion
+  - compare_product_details
+  - ask_reviews
+  
+  # ===== ADVANCED FASHION =====
+  - ask_sizing_advice
+  - ask_product_care
+  - report_order_error
+  - request_exchange_item
+  - report_quality_issue
+  - request_policy_exception
+  - request_stock_notification_conditional
+  - check_discount_logic
+  - ask_product_comparison_contextual
+  
+  # ===== OPEN-ENDED QUERIES (Gemini AI) =====
+  - open_ended_query
+  - ask_advice
+  - ask_general_question
+  
+  # ===== SYSTEM =====
+  - nlu_fallback
+  - inform
 
 # ============================================================================
 # ENTITIES - Information extracted from user messages  
@@ -309,37 +334,71 @@ responses:
 # ============================================================================
 actions:
   # ===== PRODUCT SEARCH & INQUIRY =====
-  - action_search_products              # product_search_text
-  - action_search_products_by_image     # product_search_image
-  - action_get_product_info             # product_ask_info
-  - action_check_stock                  # product_check_stock
-  - action_get_promotions               # ask_promotion
-  - action_recommend_by_context         # product_recommend_context
+  - action_search_products
+  - action_get_product_price
+  - action_check_availability
+  - action_get_product_details
+  - action_get_product_info
+  - action_check_stock
+  - action_get_promotions
   
   # ===== SIZE & CONSULTATION =====
-  - action_get_size_chart               # consult_size_chart
-  - action_get_sizing_advice            # consult_size_advice
+  - action_get_size_chart
+  - action_get_sizing_advice
+  - action_get_styling_advice
+  - action_get_product_care
   
-  # ===== CART & PURCHASE ACTIONS =====
-  - action_add_to_cart                  # action_add_cart
-  - action_buy_now                      # action_buy_now
-  - action_add_to_wishlist              # action_add_wishlist
+  # ===== RECOMMENDATIONS =====
+  - action_recommend_products
+  - action_recommend_by_context
+  - action_compare_products
+  
+  # ===== CART & PURCHASE =====
+  - action_add_to_cart
+  - action_view_cart
+  - action_buy_now
+  - action_add_to_wishlist
   
   # ===== ORDER MANAGEMENT =====
-  - action_check_order_status           # order_status_check
-  - action_cancel_order                 # order_cancel_request
-  - action_create_feedback_ticket       # order_feedback
+  - action_track_order
+  - action_cancel_order
+  - action_cancel_order_request
+  - action_report_order_error
+  - action_request_return_or_exchange
+  - action_report_quality_issue
+  - action_create_feedback_ticket
   
-  # ===== SUPPORT & FAQ =====
-  - action_create_support_ticket        # faq_contact_human
+  # ===== POLICIES & FAQ =====
+  - action_get_shipping_policy
+  - action_get_return_policy
+  - action_get_payment_methods
+  - action_get_warranty_policy
+  - action_handle_policy_exception
+  
+  # ===== SUPPORT =====
+  - action_create_support_ticket
+  - action_set_stock_notification
+  - action_check_discount
   
   # ===== FALLBACK & AI =====
-  - action_ask_gemini                   # out_of_scope_gemini
-  - action_fallback                     # nlu_fallback
+  - action_ask_gemini
+  - action_ask_gemini_with_history
+  - action_fallback
   
   # ===== UTILITY ACTIONS =====
   - action_default_ask_affirmation
   - action_reset_slots
+
+# ============================================================================
+# FORMS - Slot Filling for Cart/Purchase Flow
+# ============================================================================
+forms:
+  product_cart_form:
+    required_slots:
+      - current_product_id
+      - cart_size
+      - cart_color
+      - cart_quantity
 
 # ============================================================================
 # SESSION CONFIGURATION

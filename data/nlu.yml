@@ -93,6 +93,35 @@ nlu:
     - show [hats](product_type)
     - what [bags](product_type) you got
     - browse [jackets](product_type)
+    - tôi cần tìm [ao-khoac-nam-lightweight-windbreaker-form-regular](product_name)
+    - tìm giúp tôi [ao-thun-nam-cotton-basic](product_name)
+    - cho tôi xem [quan-jean-nam-slim-fit-den](product_name)
+    - tìm [ao-polo-nam-pique-trang](product_name)
+    - có sản phẩm [ao-so-mi-nam-tron-xanh](product_name) không
+    - tìm [giay-the-thao-nam-running](product_name)
+    - cho xem [ao-khoac-denim-nam-form-loose](product_name)
+    - tìm [quan-short-nam-the-thao](product_name)
+    - tìm sản phẩm [ao-khoac-bomber-nam-den](product_name)
+    - cho tôi [ao-hoodie-nam-trang-form-rong](product_name)
+    - xem [quan-kaki-nam-kem-basic](product_name)
+    - tìm [ao-vest-nam-xam-slim-fit](product_name)
+    - có [giay-da-nam-nau-classic](product_name) không
+    - tìm [ao-len-nam-xanh-navy-wool](product_name)
+    - cho xem [tui-deo-cheo-nam-da-den](product_name)
+    - tìm [non-luoi-trai-nam-den](product_name)
+    - xem sản phẩm [ao-thun-nu-trang-basic](product_name)
+    - tìm [vay-nu-den-dai-form-a](product_name)
+    - cho tôi xem [ao-blazer-nu-xam-regular](product_name)
+    - find [ao-khoac-gio-nam](product_name)
+    - search [quan-jogger-nam-den](product_name)
+    - show me [ao-phong-tron-trang](product_name)
+    - I need [giay-sneaker-trang-basic](product_name)
+    - looking for [ao-khoac-da-nam-nau](product_name)
+    - ao-polo-nam
+    - ao-khoac-nam-lightweight-windbreaker-form-regular
+    - quan-jean-nam-slim-fit
+    - ao-thun-nam-cotton-basic
+    - giay-the-thao-nam
 
 - intent: ask_product_price
   examples: |
@@ -185,6 +214,66 @@ nlu:
     - giới thiệu sản phẩm
     - có sản phẩm gì
     - bán gì
+
+# ============================================================================
+# 2.5 CART & PURCHASE
+# ============================================================================
+- intent: add_to_cart
+  examples: |
+    - Add this to cart
+    - I want to buy this
+    - Put this in my cart
+    - Add to cart
+    - I'll take this one
+    - Add this product
+    - Buy this
+    - Purchase this
+    - I want this
+    - Can I add this to my cart?
+    - Add size [M](size) to cart
+    - I want size [L](size)
+    - Add [XL](size) please
+    - I want the [blue](color) one
+    - Add the [red](color) version
+    - Put [2](quantity) in cart
+    - I want [3](quantity) of these
+    - Add this in size [M](size) and color [black](color)
+    - Thêm vào giỏ hàng
+    - Cho vào giỏ
+    - Mua cái này
+    - Tôi muốn mua
+    - Cho tôi size [M](size)
+    - Thêm màu [đỏ](color)
+    - Cho [2](quantity) cái
+
+- intent: view_cart
+  examples: |
+    - Show my cart
+    - What's in my cart?
+    - View cart
+    - Check cart
+    - My cart
+    - Cart
+    - Show cart
+    - What did I add?
+    - Show my items
+    - What's in my basket?
+    - Xem giỏ hàng
+    - Giỏ hàng của tôi
+    - Cho xem giỏ
+    - Check giỏ
+
+- intent: remove_from_cart
+  examples: |
+    - Remove from cart
+    - Delete this item
+    - Remove this
+    - Take this out
+    - Remove item
+    - Delete from cart
+    - Xóa khỏi giỏ
+    - Bỏ ra
+    - Xóa sản phẩm này
 
 # ============================================================================
 # 3. ORDER TRACKING & MANAGEMENT
@@ -633,7 +722,84 @@ nlu:
     - Which is better for someone with [broad shoulders](context), the [regular fit shirt](product_name) or the [slim fit shirt](product_name)?
 
 # ============================================================================
-# 10. ENTITIES
+# 9. OPEN-ENDED QUERIES (Gemini AI)
+# ============================================================================
+- intent: open_ended_query
+  examples: |
+    - What's trending in fashion right now?
+    - How do I style a denim jacket?
+    - What colors go well with navy blue?
+    - Tell me about streetwear fashion
+    - What's the difference between slim fit and regular fit?
+    - How should I dress for a job interview?
+    - What are the latest fashion trends?
+    - Can you explain capsule wardrobe?
+    - What's business casual?
+    - Tell me about sustainable fashion
+    - What are the essential wardrobe pieces?
+    - How to dress for my body type?
+    - Xu hướng thời trang hiện nay là gì?
+    - Tôi nên phối áo khoác denim như thế nào?
+    - Màu gì hợp với màu xanh navy?
+    - Nói cho tôi về phong cách streetwear
+    - Khác biệt giữa slim fit và regular fit là gì?
+
+- intent: ask_advice
+  examples: |
+    - What should I wear to a wedding?
+    - How to build a capsule wardrobe?
+    - Give me style advice for summer
+    - What outfit should I wear for a date?
+    - How can I look taller?
+    - What accessories go with this?
+    - How to dress for winter?
+    - What shoes match with jeans?
+    - Can you suggest an outfit for the beach?
+    - How to dress professionally?
+    - Tôi nên mặc gì đi đám cưới?
+    - Làm sao xây dựng tủ đồ cơ bản?
+    - Cho tôi lời khuyên phối đồ mùa hè
+    - Tôi nên mặc gì đi hẹn hò?
+    - Làm sao để trông cao hơn?
+    - Phụ kiện gì phù hợp với bộ này?
+    - Mặc gì cho mùa đông?
+    - Giày gì phối với quần jeans?
+
+- intent: ask_general_question
+  examples: |
+    - Do you ship internationally?
+    - What payment methods do you accept?
+    - How long does shipping take?
+    - Can I change my order?
+    - What's your return policy?
+    - Do you have physical stores?
+    - How do I track my package?
+    - Are there any promotions?
+    - Do you offer gift wrapping?
+    - How can I contact customer service?
+    - Các bạn giao hàng quốc tế không?
+    - Các bạn nhận thanh toán bằng gì?
+    - Giao hàng mất bao lâu?
+    - Tôi có thể thay đổi đơn hàng không?
+    - Chính sách đổi trả như thế nào?
+    - Các bạn có cửa hàng thực tế không?
+    - Làm sao tôi theo dõi kiện hàng?
+    - Có khuyến mãi gì không?
+
+# ============================================================================
+# 10. REGEX PATTERNS - For better entity extraction
+# ============================================================================
+
+- regex: product_slug
+  examples: |
+    - [a-z0-9]+-[a-z0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*
+
+- regex: product_code
+  examples: |
+    - [A-Z]{2,3}\d{4,8}
+
+# ============================================================================
+# 11. ENTITIES
 # ============================================================================
 # Entities are extracted from user messages and used in actions
 # Examples: product_name, product_type, order_number, size, color, brand, category

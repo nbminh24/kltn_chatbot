@@ -1,15 +1,16 @@
 # Rasa Configuration File for E-commerce Chatbot
-# Language: Vietnamese & English (Bilingual Support)
+# Language: English (with Vietnamese support)
 # Rasa Version: 3.x
+# Mode: HYBRID (Rasa NLU + Gemini AI Fallback)
 
 # Recipe version for Rasa 3.x
 recipe: default.v1
 
-# Language and pipeline configuration  
-# Using 'vi' for Vietnamese primary, but supports English too
-language: vi
+# Language configuration
+# Changed to 'en' because training data is primarily English
+language: en
 
-# NLU Pipeline - Optimized for English with potential for multilingual
+# NLU Pipeline - Optimized for Hybrid Mode
 pipeline:
   # Tokenization
   - name: WhitespaceTokenizer
@@ -25,7 +26,7 @@ pipeline:
   
   # Intent Classification
   - name: DIETClassifier
-    epochs: 30
+    epochs: 100                           # Increased from 30 for better learning
     constrain_similarities: true
     model_confidence: softmax
     evaluate_every_number_of_epochs: 10
@@ -33,17 +34,26 @@ pipeline:
   
   # Entity Extraction
   - name: EntitySynonymMapper
+  
+  # CRITICAL: Fallback Classification for Hybrid Mode
+  # This determines when to call Gemini AI
+  - name: FallbackClassifier
+    threshold: 0.7                        # If confidence < 70% -> Trigger fallback
+    ambiguity_threshold: 0.1              # Detect ambiguous intents
 
 # Dialogue Management Policies
 policies:
   - name: MemoizationPolicy
     max_history: 3
+  
   - name: RulePolicy
-    core_fallback_threshold: 0.3
-    core_fallback_action_name: action_fallback
+    core_fallback_threshold: 0.3          # Core fallback threshold
+    core_fallback_action_name: "action_ask_gemini"  # Call Gemini when Rasa can't handle
+    enable_fallback_prediction: true      # Enable fallback prediction
+  
   - name: TEDPolicy
-    max_history: 3
-    epochs: 30
+    max_history: 5                        # Increased from 3 for better context
+    epochs: 100                           # Increased from 30
     constrain_similarities: true
     evaluate_every_number_of_epochs: 10
     evaluate_on_number_of_examples: 50

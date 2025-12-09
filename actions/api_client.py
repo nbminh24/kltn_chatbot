@@ -28,7 +28,7 @@ class BackendAPIClient:
         
         # Default headers for all requests
         self.headers = {
-            "X-Internal-Api-Key": self.api_key,
+            "x-api-key": self.api_key,  # Backend expects lowercase 'x-api-key'
             "Content-Type": "application/json"
         }
         
@@ -95,7 +95,7 @@ class BackendAPIClient:
     def search_products(self, query: str, limit: int = 10, category: str = None) -> Dict[str, Any]:
         """
         Search for products by name or description
-        Public API - no authentication required
+        Internal API - requires x-api-key authentication
         
         Args:
             query: Search query
@@ -112,10 +112,10 @@ class BackendAPIClient:
             "limit": limit
         }
         if category:
-            params["category_slug"] = category
+            params["category"] = category
         
-        # Public endpoint - doesn't need internal API key
-        return self._make_request("GET", "/products", params=params)
+        # Use INTERNAL endpoint - requires API key (already in headers)
+        return self._make_request("GET", "/internal/products", params=params)
     
     def get_product_by_id(self, product_id: str) -> Dict[str, Any]:
         """Get detailed information about a specific product - Public API"""

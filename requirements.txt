@@ -14,8 +14,8 @@ urllib3==1.26.18
 # Environment Variables
 python-dotenv==1.0.0
 
-# Google Gemini API (install separately if needed)
-# google-generativeai
+# Google Gemini API
+google-generativeai
 
 # Data Processing (version compatible with Rasa 3.6.20)
 pandas>=1.5.0
