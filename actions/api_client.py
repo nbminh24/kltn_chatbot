@@ -701,6 +701,63 @@ class BackendAPIClient:
         logger.info(f"Fetching top {limit} discounted products")
         params = {"limit": limit}
         return self._make_request("GET", "/internal/promotions/top-discounts", params=params)
+    
+    # ========================================================================
+    # GEMINI AI LOGGING (For Academic Evaluation)
+    # ========================================================================
+    
+    def log_gemini_call(
+        self,
+        user_message: str,
+        rasa_intent: str,
+        rasa_confidence: float,
+        gemini_response: str,
+        response_time_ms: int,
+        is_validated: bool = True,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Log Gemini AI calls for academic evaluation and auditing.
+        
+        This logging is CRITICAL for the thesis defense to show:
+        - How often Gemini is called (should be low %)
+        - What types of queries trigger Gemini
+        - That Gemini never handles business data
+        
+        Args:
+            user_message: Original user question
+            rasa_intent: Intent detected by Rasa
+            rasa_confidence: Confidence score from Rasa
+            gemini_response: Response from Gemini (validated)
+            response_time_ms: Response time in milliseconds
+            is_validated: Whether response passed safety validation
+            metadata: Additional metadata (with_history, fallback, etc.)
+            
+        Returns:
+            Backend response (success/error)
+        """
+        logger.info(f"📊 Logging Gemini call: intent={rasa_intent}, confidence={rasa_confidence:.2f}")
+        
+        data = {
+            "user_message": user_message[:500],  # Truncate long messages
+            "rasa_intent": rasa_intent,
+            "rasa_confidence": rasa_confidence,
+            "gemini_response": gemini_response[:1000],  # Truncate long responses
+            "response_time_ms": response_time_ms,
+            "is_validated": is_validated,
+            "metadata": metadata or {}
+        }
+        
+        # Try to log to backend (non-critical, don't fail if backend offline)
+        try:
+            return self._make_request(
+                "POST",
+                "/api/chatbot/gemini/log",
+                data=data
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to log Gemini call to backend (non-critical): {e}")
+            return {"success": False, "error": "Backend logging unavailable"}
 
 
 # Singleton instance

@@ -18,6 +18,106 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# GEMINI AI SAFETY - System Prompts & Validation
+# ============================================================================
+
+# CRITICAL: Gemini is ONLY for fashion knowledge, NOT business data
+GEMINI_SYSTEM_PROMPT = """You are a FASHION KNOWLEDGE CONSULTANT (NOT a sales assistant or e-commerce agent).
+
+✅ YOU CAN answer about:
+- General fashion style advice (how to match clothes, color coordination)
+- Material knowledge (cotton, polyester, denim, wool properties and care)
+- Body type and fit guidance (slim fit vs regular, what suits different shapes)
+- Fashion trends and tips (seasonal trends, classic styles)
+- Styling for different occasions (casual, formal, beach, wedding)
+- General wardrobe and clothing care tips
+
+❌ YOU ABSOLUTELY CANNOT answer about (say "Let me check our system for that information"):
+- Specific product prices or costs ("How much is X?")
+- Stock availability ("Is X in stock?")
+- Order status or tracking ("Where is my order?")
+- Shipping times or delivery information
+- Store promotions, discounts, or coupon codes
+- Specific product details from our inventory (colors, sizes available)
+- Product comparisons from our store's catalog
+- Purchase recommendations for specific items
+
+CRITICAL RULE: If the user asks about any forbidden topic, you MUST respond with:
+"I don't have access to that specific information from our store system. Let me connect you with our product database to get accurate details."
+
+Keep responses concise (2-3 sentences), friendly, and helpful within your allowed scope."""
+
+
+def validate_gemini_response(response_text: str, user_message: str) -> tuple[bool, str]:
+    """
+    Validate that Gemini response doesn't violate safety policies.
+    
+    This function prevents Gemini from hallucinating business data like:
+    - Product prices
+    - Stock information
+    - Order details
+    - Shipping policies
+    
+    Args:
+        response_text: The response from Gemini
+        user_message: Original user message (for context)
+        
+    Returns:
+        (is_valid, safe_response): 
+            - is_valid: True if response is safe, False if violated
+            - safe_response: Original text or filtered fallback message
+    """
+    # Keywords that indicate Gemini is answering forbidden topics
+    FORBIDDEN_KEYWORDS = [
+        # Price-related
+        "price", "cost", "$", "₫", "vnd", "dollar", "usd",
+        "cheap", "expensive", "affordable", "pay",
+        
+        # Stock-related
+        "in stock", "out of stock", "available", "unavailable",
+        "sold out", "inventory",
+        
+        # Order-related
+        "order", "tracking", "shipped", "delivery", "arrive",
+        "status", "processing",
+        
+        # Promotion-related
+        "discount", "promotion", "sale", "off", "coupon",
+        "deal", "special offer",
+        
+        # Specific numeric prices (pattern matching)
+        "\\d+\\s*(dong|vnd|usd|dollar)", 
+    ]
+    
+    response_lower = response_text.lower()
+    
+    # Check for forbidden keywords
+    violated_keywords = []
+    for keyword in FORBIDDEN_KEYWORDS:
+        if keyword in response_lower:
+            violated_keywords.append(keyword)
+    
+    if violated_keywords:
+        logger.warning(
+            f"⚠️ GEMINI POLICY VIOLATION: Response mentioned forbidden topics: {violated_keywords}\n"
+            f"User asked: '{user_message[:100]}'\n"
+            f"Gemini tried to say: '{response_text[:100]}...'"
+        )
+        
+        # Return safe fallback message
+        safe_fallback = (
+            "That's a great question! However, I need to check our store system "
+            "to give you accurate information about that. Let me help you find the right details. "
+            "What specifically would you like to know?"
+        )
+        
+        return (False, safe_fallback)
+    
+    # Response is safe
+    return (True, response_text)
+
+
+# ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
@@ -111,7 +211,8 @@ class ActionSearchProducts(Action):
         
         if not search_query:
             dispatcher.utter_message(
-                text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊"
+                text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊",
+                metadata={"source": "rasa_template"}
             )
             return []
         
@@ -135,14 +236,16 @@ class ActionSearchProducts(Action):
             if isinstance(result, dict) and result.get("error"):
                 logger.error(f"❌ API Error: {result.get('error')}")
                 dispatcher.utter_message(
-                    text="I'm having trouble connecting to the product catalog right now. 🙏"
+                    text="I'm having trouble connecting to the product catalog right now. 🙏",
+                    metadata={"source": "backend", "error": True}
                 )
                 return [SlotSet("products_found", False)]
             
             # 4. Display results
             if not products:
                 dispatcher.utter_message(
-                    text=f"Sorry, I couldn't find any products matching '{search_query}' 😅\n\nCould you describe it differently?"
+                    text=f"Sorry, I couldn't find any products matching '{search_query}' 😅\n\nCould you describe it differently?",
+                    metadata={"source": "backend", "type": "no_results"}
                 )
                 return [SlotSet("products_found", False)]
             
@@ -167,7 +270,15 @@ class ActionSearchProducts(Action):
             
             message += "\n💡 Which one interests you? I can provide more details! 😊"
             
-            dispatcher.utter_message(text=message)
+            dispatcher.utter_message(
+                text=message,
+                metadata={
+                    "source": "backend",
+                    "type": "product_list",
+                    "count": len(products),
+                    "query": search_query
+                }
+            )
             
             # Save to slots
             return [
@@ -179,7 +290,8 @@ class ActionSearchProducts(Action):
         except Exception as e:
             logger.error(f"❌ Exception in ActionSearchProducts: {e}")
             dispatcher.utter_message(
-                text="Oops, something went wrong. Please try again later! 🙏"
+                text="Oops, something went wrong. Please try again later! 🙏",
+                metadata={"source": "backend", "error": True, "exception": str(e)}
             )
             return [SlotSet("products_found", False)]
 
@@ -858,10 +970,46 @@ class ActionCheckAvailability(Action):
 
 
 class ActionGetProductDetails(Action):
-    """Get detailed information about a product"""
+    """
+    Get detailed information about a product
+    REFACTORED: Support contextual queries (first one, number 2, etc.)
+    """
     
     def name(self) -> Text:
         return "action_get_product_details"
+    
+    def _parse_product_index(self, text: str) -> int:
+        """
+        Parse product index from contextual references
+        Returns 0-indexed position or -1 if not found
+        """
+        text_lower = text.lower()
+        
+        # English patterns
+        if "first" in text_lower or "1st" in text_lower or "number 1" in text_lower:
+            return 0
+        if "second" in text_lower or "2nd" in text_lower or "number 2" in text_lower:
+            return 1
+        if "third" in text_lower or "3rd" in text_lower or "number 3" in text_lower:
+            return 2
+        if "fourth" in text_lower or "4th" in text_lower or "number 4" in text_lower:
+            return 3
+        if "fifth" in text_lower or "5th" in text_lower or "number 5" in text_lower:
+            return 4
+        
+        # Vietnamese patterns
+        if "đầu tiên" in text_lower or "đầu" in text_lower or "số 1" in text_lower:
+            return 0
+        if "thứ hai" in text_lower or "thứ 2" in text_lower or "số 2" in text_lower:
+            return 1
+        if "thứ ba" in text_lower or "thứ 3" in text_lower or "số 3" in text_lower:
+            return 2
+        if "thứ tư" in text_lower or "thứ 4" in text_lower or "số 4" in text_lower:
+            return 3
+        if "thứ năm" in text_lower or "thứ 5" in text_lower or "số 5" in text_lower:
+            return 4
+        
+        return -1
     
     def run(
         self, 
@@ -870,69 +1018,86 @@ class ActionGetProductDetails(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        user_message = tracker.latest_message.get("text", "")
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
+        product = None
         
-        if not product_name:
-            # Check if there's a last product in context
+        # Strategy 1: Check for contextual reference (first one, number 2, etc.)
+        last_products = tracker.get_slot("last_products")
+        if last_products and isinstance(last_products, list) and len(last_products) > 0:
+            product_index = self._parse_product_index(user_message)
+            
+            if product_index >= 0 and product_index < len(last_products):
+                product = last_products[product_index]
+                logger.info(f"✅ Found product by context: index={product_index}, product={product.get('name')}")
+        
+        # Strategy 2: Check for explicit product name
+        if not product and product_name:
+            # First try to find in last_products by name match
+            if last_products and isinstance(last_products, list):
+                for p in last_products:
+                    if product_name.lower() in p.get("name", "").lower():
+                        product = p
+                        logger.info(f"✅ Found product in cache: {product.get('name')}")
+                        break
+            
+            # If not in cache, search via API
+            if not product:
+                api_client = get_api_client()
+                start_time = time.time()
+                result = api_client.search_products(product_name, limit=1)
+                api_time = time.time() - start_time
+                logger.info(f"⏱️ API search_products took {api_time:.3f}s")
+                
+                # Handle response
+                products = []
+                if isinstance(result, list):
+                    products = result
+                elif isinstance(result, dict):
+                    products = result.get("products") or result.get("data") or []
+                
+                if products and len(products) > 0:
+                    product = products[0]
+                else:
+                    dispatcher.utter_message(
+                        text=f"Hmm, I couldn't find '{product_name}' 😅\n\nCould you try a different name?"
+                    )
+                    return []
+        
+        # Strategy 3: Check last_product slot (singular - from previous detail view)
+        if not product:
             last_product = tracker.get_slot("last_product")
             if last_product:
                 product = last_product
-            else:
-                # No specific product - show popular/recommended products
-                api_client = get_api_client()
-                start_time = time.time()
-                result = api_client.search_products("popular", limit=5)
-                api_time = time.time() - start_time
-                logger.info(f"⏱️ API search_products (popular) took {api_time:.3f}s")
-                
-                if result.get("error") or not result.get("products"):
-                    dispatcher.utter_message(
-                        text="We have everything from shirts, pants, jackets to accessories! What are you interested in? 😊"
-                    )
-                    return []
-                
-                products = result["products"]
-                response = "Let me show you our hottest items right now:\n\n"
-                for i, prod in enumerate(products[:3], 1):
-                    name = prod.get('name', 'Unknown')
-                    price = prod.get('selling_price', 0)
-                    stock = prod.get('total_stock', 0)
-                    
-                    if isinstance(price, (int, float)) and price > 0:
-                        price_str = f"{price:,.0f}₫"
-                    else:
-                        price_str = "Contact us"
-                    
-                    status = "in stock" if stock > 0 else "out of stock"
-                    response += f"{i}. **{name}** - {price_str} ({status})\n"
-                
-                response += "\n💬 You can ask me:\n"
-                response += "• 'I want to find a jacket/pants/shoes'\n"
-                response += "• 'Show me details about [product name]'\n"
-                response += "• 'What size would fit me?'"
-                dispatcher.utter_message(text=response)
-                return [SlotSet("last_products", products)]
-        else:
+                logger.info("✅ Using last viewed product")
+        
+        # Strategy 4: No context - show popular products
+        if not product:
+            dispatcher.utter_message(
+                text="Which product would you like to know about? 😊\n\nYou can say:\n• 'Show me the first one'\n• 'Tell me about the blue jacket'\n• 'Search for shirts'"
+            )
+            return []
+        
+        # Get full details via API if we have product_id
+        product_id = product.get("id") or product.get("product_id")
+        if product_id:
             api_client = get_api_client()
-            start_time = time.time()
-            result = api_client.search_products(product_name, limit=1)
-            api_time = time.time() - start_time
-            logger.info(f"⏱️ API search_products took {api_time:.3f}s")
-            
-            if result.get("error") or not result.get("products"):
-                dispatcher.utter_message(
-                    text=f"Hmm, I couldn't find '{product_name}' 😅\n\nCould you try a different name, or would you like me to suggest alternatives?"
-                )
-                return []
-            
-            product = result["products"][0]
+            try:
+                detailed_result = api_client.get_product_by_id(str(product_id))
+                if not detailed_result.get("error"):
+                    # Merge detailed data
+                    product.update(detailed_result.get("data", {}) or detailed_result)
+                    logger.info(f"✅ Fetched detailed info for product_id={product_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not fetch detailed info: {e}")
         
         # Format product details
         name = product.get("name", "Product")
-        price = product.get("selling_price", 0)
+        price = product.get("selling_price") or product.get("price", 0)
         description = product.get("description", "High quality product")
-        stock = product.get("total_stock", 0)
-        category = product.get("category_name", "General")
+        stock = product.get("total_stock") or product.get("stock", 0)
+        category = product.get("category_name") or product.get("category", "General")
+        material = product.get("material", "")
         
         if isinstance(price, (int, float)) and price > 0:
             price_str = f"{price:,.0f}₫"
@@ -943,16 +1108,24 @@ class ActionGetProductDetails(Action):
         response += f"💰 Price: {price_str}\n"
         response += f"📂 Category: {category}\n"
         
+        if material:
+            response += f"🧵 Material: {material}\n"
+        
         if stock > 0:
             response += f"✅ In stock - {stock} units available!\n\n"
         else:
             response += f"😢 Currently out of stock\n\n"
         
         response += f"📝 **Description:**\n{description}\n\n"
-        response += "Would you like sizing advice, styling tips, or ready to order? 😊"
+        response += "Would you like sizing advice, styling tips, or ready to add to cart? 😊"
         
         dispatcher.utter_message(text=response)
-        return [SlotSet("last_product", product)]
+        
+        # Save current product and update slot
+        return [
+            SlotSet("last_product", product),
+            SlotSet("current_product_id", product_id)
+        ]
 
 
 # ============================================================================
@@ -1350,11 +1523,33 @@ class ActionCompareProducts(Action):
 class ActionAddToCart(Action):
     """
     Add product to cart with size, color, and quantity
-    Uses Rasa Forms for slot filling
+    REFACTORED: Support contextual reference (add first one, add number 2)
     """
     
     def name(self) -> Text:
         return "action_add_to_cart"
+    
+    def _parse_product_index(self, text: str) -> int:
+        """Parse product index from contextual references"""
+        text_lower = text.lower()
+        
+        # English patterns
+        if "first" in text_lower or "1st" in text_lower or "number 1" in text_lower:
+            return 0
+        if "second" in text_lower or "2nd" in text_lower or "number 2" in text_lower:
+            return 1
+        if "third" in text_lower or "3rd" in text_lower or "number 3" in text_lower:
+            return 2
+        
+        # Vietnamese patterns
+        if "đầu tiên" in text_lower or "đầu" in text_lower or "số 1" in text_lower or "cái 1" in text_lower:
+            return 0
+        if "thứ hai" in text_lower or "thứ 2" in text_lower or "số 2" in text_lower or "cái 2" in text_lower:
+            return 1
+        if "thứ ba" in text_lower or "thứ 3" in text_lower or "số 3" in text_lower or "cái 3" in text_lower:
+            return 2
+        
+        return -1
     
     def run(
         self,
@@ -1363,11 +1558,32 @@ class ActionAddToCart(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        user_message = tracker.latest_message.get("text", "")
+        
         # Get filled slots from form
         product_id = tracker.get_slot("current_product_id")
         size = tracker.get_slot("cart_size")
         color = tracker.get_slot("cart_color")
         quantity = tracker.get_slot("cart_quantity") or 1
+        
+        # Try to get product from context if not set
+        if not product_id:
+            last_products = tracker.get_slot("last_products")
+            last_product = tracker.get_slot("last_product")
+            
+            # Try contextual reference
+            if last_products and isinstance(last_products, list) and len(last_products) > 0:
+                product_index = self._parse_product_index(user_message)
+                
+                if product_index >= 0 and product_index < len(last_products):
+                    product = last_products[product_index]
+                    product_id = product.get("id") or product.get("product_id")
+                    logger.info(f"✅ Detected product by context: index={product_index}, id={product_id}")
+            
+            # Fallback to last viewed product
+            if not product_id and last_product:
+                product_id = last_product.get("id") or last_product.get("product_id")
+                logger.info(f"✅ Using last viewed product: id={product_id}")
         
         logger.info(f"🛒 Adding to cart: product_id={product_id}, size={size}, color={color}, qty={quantity}")
         
@@ -1525,7 +1741,7 @@ class ActionViewCart(Action):
 class ActionAskGemini(Action):
     """
     Handle open-ended queries using Gemini AI
-    REFACTORED: Simplified prompt structure
+    UPDATED: Uses strict system prompt and response validation for academic safety
     """
     
     def name(self) -> Text:
@@ -1539,12 +1755,17 @@ class ActionAskGemini(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_message = tracker.latest_message.get('text', '')
+        intent = tracker.latest_message.get('intent', {}).get('name', 'unknown')
+        confidence = tracker.latest_message.get('intent', {}).get('confidence', 0.0)
         
         if not user_message:
-            dispatcher.utter_message(text="Could you repeat that? 😊")
+            dispatcher.utter_message(
+                text="Could you repeat that? 😊",
+                metadata={"source": "rasa_template"}
+            )
             return []
         
-        logger.info(f"🤖 ActionAskGemini: {user_message[:50]}...")
+        logger.info(f"🤖 ActionAskGemini: intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
         
         # Get Gemini client (Singleton)
         gemini = get_gemini_client()
@@ -1552,26 +1773,71 @@ class ActionAskGemini(Action):
         if not gemini or not gemini.model:
             logger.warning("⚠️ Gemini not available")
             dispatcher.utter_message(
-                text="I can help with product searches, sizing, and style advice! What would you like to know? 😊"
+                text="I can help with product searches, sizing, and style advice! What would you like to know? 😊",
+                metadata={"source": "rasa_template"}
             )
             return []
         
-        # Create simple prompt with context
-        prompt = f"""You are a helpful fashion sales assistant.
-User said: "{user_message}"
+        # Create prompt with strict system instructions
+        prompt = f"""{GEMINI_SYSTEM_PROMPT}
 
-Please answer in English, be concise (2-3 sentences) and helpful. 
-If it's chitchat, be friendly. If it's about fashion advice, give practical suggestions."""
+User question: "{user_message}"
+
+Provide helpful, friendly advice within your allowed scope. Be concise (2-3 sentences)."""
         
-        # Call Gemini
+        # Call Gemini with timing
+        start_time = time.time()
         result = gemini.handle_open_ended_query(prompt)
+        response_time_ms = int((time.time() - start_time) * 1000)
         
         if isinstance(result, dict) and result.get("success") and result.get("response"):
-            dispatcher.utter_message(text=result["response"])
-            dispatcher.utter_message(text="Can I help with anything else? 😊")
-        else:
+            # CRITICAL: Validate response before sending to user
+            is_valid, safe_response = validate_gemini_response(
+                result["response"], 
+                user_message
+            )
+            
+            if not is_valid:
+                # Gemini violated policy - logged in validate function
+                logger.error(f"❌ Gemini response blocked due to policy violation")
+            
+            logger.info(f"✅ Gemini responded in {response_time_ms}ms (valid={is_valid})")
+            
+            # LOGGING: Track Gemini usage for academic evaluation
+            api_client = get_api_client()
+            api_client.log_gemini_call(
+                user_message=user_message,
+                rasa_intent=intent,
+                rasa_confidence=confidence,
+                gemini_response=safe_response,
+                response_time_ms=response_time_ms,
+                is_validated=is_valid,
+                metadata={
+                    "action": "action_ask_gemini",
+                    "with_history": False
+                }
+            )
+            
+            # Send safe response with metadata
             dispatcher.utter_message(
-                text="I'm here to help with products, styling, and fashion advice! What would you like to know? 😊"
+                text=safe_response,
+                metadata={
+                    "source": "gemini_ai",
+                    "is_validated": is_valid,
+                    "response_time_ms": response_time_ms,
+                    "intent": intent,
+                    "confidence": confidence
+                }
+            )
+            dispatcher.utter_message(
+                text="Can I help with anything else? 😊",
+                metadata={"source": "rasa_template"}
+            )
+        else:
+            logger.warning(f"⚠️ Gemini failed to respond")
+            dispatcher.utter_message(
+                text="I'm here to help with products, styling, and fashion advice! What would you like to know? 😊",
+                metadata={"source": "rasa_template"}
             )
         
         return []
@@ -1580,7 +1846,7 @@ If it's chitchat, be friendly. If it's about fashion advice, give practical sugg
 class ActionAskGeminiWithHistory(Action):
     """
     Handle open-ended queries with conversation history
-    Provides contextual responses based on previous messages
+    UPDATED: Uses strict system prompt and response validation
     """
     
     def name(self) -> Text:
@@ -1594,22 +1860,26 @@ class ActionAskGeminiWithHistory(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_message = tracker.latest_message.get('text', '')
+        intent = tracker.latest_message.get('intent', {}).get('name', 'unknown')
+        confidence = tracker.latest_message.get('intent', {}).get('confidence', 0.0)
         
         if not user_message:
             dispatcher.utter_message(
-                text="I didn't catch that. Could you please repeat? 😊"
+                text="I didn't catch that. Could you please repeat? 😊",
+                metadata={"source": "rasa_template"}
             )
             return []
         
-        logger.info(f"🤖 ActionAskGeminiWithHistory: Processing query with history")
+        logger.info(f"🤖 ActionAskGeminiWithHistory: intent={intent}, confidence={confidence:.2f}")
         
         # Get Gemini client
         gemini_client = get_gemini_client()
         
-        if not gemini_client.enabled:
+        if not gemini_client or not gemini_client.model:
             logger.warning("⚠️ Gemini is disabled")
             dispatcher.utter_message(
-                text="I can help you with various questions! What would you like to know? 😊"
+                text="I can help you with various questions! What would you like to know? 😊",
+                metadata={"source": "rasa_template"}
             )
             return []
         
@@ -1631,29 +1901,75 @@ class ActionAskGeminiWithHistory(Action):
         
         if not conversation_history:
             logger.warning("⚠️ No conversation history found")
-            dispatcher.utter_message(text="Let's start fresh! What would you like to know? 😊")
+            dispatcher.utter_message(
+                text="Let's start fresh! What would you like to know? 😊",
+                metadata={"source": "rasa_template"}
+            )
             return []
         
-        # Add e-commerce context
-        context = """You are a knowledgeable fashion e-commerce assistant.
-        Use the conversation history to provide contextual, helpful responses.
-        Reference previous topics when relevant."""
+        # Format conversation history for prompt
+        history_text = "\n".join([
+            f"{msg['role'].upper()}: {msg['text'][:100]}" 
+            for msg in conversation_history[-6:]  # Last 6 messages
+        ])
         
-        # Generate with history
-        result = gemini_client.generate_response_with_context(
-            user_query=user_message,
-            context=context,
-            conversation_history=conversation_history
-        )
+        # Create prompt with history context
+        prompt = f"""{GEMINI_SYSTEM_PROMPT}
+
+Conversation history (for context):
+{history_text}
+
+Current user question: "{user_message}"
+
+Provide helpful advice based on the conversation context. Be concise (2-3 sentences)."""
+        
+        # Call Gemini with timing
+        start_time = time.time()
+        result = gemini_client.handle_open_ended_query(prompt)
+        response_time_ms = int((time.time() - start_time) * 1000)
         
         if result.get("success") and result.get("response"):
-            logger.info(f"✅ Gemini with history responded successfully")
-            dispatcher.utter_message(text=result["response"])
+            # CRITICAL: Validate response
+            is_valid, safe_response = validate_gemini_response(
+                result["response"], 
+                user_message
+            )
+            
+            if not is_valid:
+                logger.error(f"❌ Gemini with history violated policy")
+            
+            logger.info(f"✅ Gemini with history responded in {response_time_ms}ms (valid={is_valid})")
+            
+            # LOGGING: Track Gemini usage with history
+            api_client = get_api_client()
+            api_client.log_gemini_call(
+                user_message=user_message,
+                rasa_intent=intent,
+                rasa_confidence=confidence,
+                gemini_response=safe_response,
+                response_time_ms=response_time_ms,
+                is_validated=is_valid,
+                metadata={
+                    "action": "action_ask_gemini_with_history",
+                    "with_history": True,
+                    "history_length": len(conversation_history)
+                }
+            )
+            
+            dispatcher.utter_message(
+                text=safe_response,
+                metadata={
+                    "source": "gemini_ai",
+                    "is_validated": is_valid,
+                    "response_time_ms": response_time_ms,
+                    "with_history": True
+                }
+            )
         else:
             logger.error(f"❌ Gemini with history failed: {result.get('error')}")
-            # Fallback to simple response
             dispatcher.utter_message(
-                text="I'm here to help! What would you like to know? 😊"
+                text="I'm here to help! What would you like to know? 😊",
+                metadata={"source": "rasa_template"}
             )
         
         return []
@@ -1664,7 +1980,10 @@ class ActionAskGeminiWithHistory(Action):
 # ============================================================================
 
 class ActionFallback(Action):
-    """Handle messages the bot doesn't understand"""
+    """
+    Handle messages the bot doesn't understand
+    UPDATED: Uses strict system prompt and response validation
+    """
     
     def name(self) -> Text:
         return "action_fallback"
@@ -1680,33 +1999,72 @@ class ActionFallback(Action):
         intent = tracker.latest_message.get("intent", {}).get("name", "unknown")
         confidence = tracker.latest_message.get("intent", {}).get("confidence", 0.0)
         
-        logger.info(f"Fallback triggered for message: {user_message} (intent: {intent}, confidence: {confidence})")
-        
-        # Removed: Backend logging (causes 401 error when backend offline)
-        # api_client = get_api_client()
-        # api_client.log_fallback(user_message, intent, confidence)
+        logger.info(f"⚠️ Fallback triggered: intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
         
         # Try to use Gemini for open-ended queries
         gemini_client = get_gemini_client()
         
         # Check if Gemini is available
         if gemini_client and gemini_client.model:
-            # Create simple prompt
-            prompt = f"""You are a helpful fashion e-commerce assistant.
-User said: "{user_message}"
+            # Use strict system prompt
+            prompt = f"""{GEMINI_SYSTEM_PROMPT}
 
-Please answer in English, be concise (2-3 sentences) and helpful."""
+User question: "{user_message}"
+
+Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
             
+            # Call Gemini with timing
+            start_time = time.time()
             rag_result = gemini_client.handle_open_ended_query(prompt)
+            response_time_ms = int((time.time() - start_time) * 1000)
             
             if rag_result.get("success") and rag_result.get("response"):
-                logger.info(f"✅ Gemini handled fallback: {user_message[:50]}...")
-                dispatcher.utter_message(text=rag_result["response"])
-                dispatcher.utter_message(text="Can I help you with anything else? 😊")
+                # CRITICAL: Validate response
+                is_valid, safe_response = validate_gemini_response(
+                    rag_result["response"], 
+                    user_message
+                )
+                
+                if not is_valid:
+                    logger.error(f"❌ Gemini fallback violated policy")
+                
+                logger.info(f"✅ Gemini handled fallback in {response_time_ms}ms (valid={is_valid})")
+                
+                # LOGGING: Track fallback Gemini calls
+                api_client = get_api_client()
+                api_client.log_gemini_call(
+                    user_message=user_message,
+                    rasa_intent=intent,
+                    rasa_confidence=confidence,
+                    gemini_response=safe_response,
+                    response_time_ms=response_time_ms,
+                    is_validated=is_valid,
+                    metadata={
+                        "action": "action_fallback",
+                        "is_fallback": True,
+                        "with_history": False
+                    }
+                )
+                
+                dispatcher.utter_message(
+                    text=safe_response,
+                    metadata={
+                        "source": "gemini_ai",
+                        "is_validated": is_valid,
+                        "response_time_ms": response_time_ms,
+                        "intent": intent,
+                        "confidence": confidence,
+                        "is_fallback": True
+                    }
+                )
+                dispatcher.utter_message(
+                    text="Can I help you with anything else? 😊",
+                    metadata={"source": "rasa_template"}
+                )
                 return []
         
-        # Standard fallback if RAG fails or disabled
-        logger.warning(f"RAG failed or disabled for: {user_message}")
+        # Standard fallback if Gemini fails or disabled
+        logger.warning(f"⚠️ Gemini not available for fallback: {user_message[:50]}...")
         dispatcher.utter_message(
             text="Sorry, I didn't quite understand that 😅\n\n"
                  "I can help you with:\n"
@@ -1715,7 +2073,8 @@ Please answer in English, be concise (2-3 sentences) and helpful."""
                  "• Order tracking\n"
                  "• Shipping and return policies\n"
                  "• Promotions & discounts\n\n"
-                 "What can I help you with? 👕"
+                 "What can I help you with? 👕",
+            metadata={"source": "rasa_template", "is_fallback": True}
         )
         
         return []

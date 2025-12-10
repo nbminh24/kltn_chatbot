@@ -214,6 +214,32 @@ nlu:
     - giới thiệu sản phẩm
     - có sản phẩm gì
     - bán gì
+    - The first one
+    - The second one
+    - The third one
+    - Number 1
+    - Number 2
+    - Number 3
+    - Show me the first product
+    - Tell me about the first one
+    - What about the second one?
+    - I want to know about number 1
+    - Cái đầu tiên
+    - Cái thứ hai
+    - Cái thứ 2
+    - Cái thứ 3
+    - Số 1
+    - Số 2
+    - Cái đầu tiên giá bao nhiêu?
+    - Cái thứ 2 còn hàng không?
+    - Cho tôi xem cái đầu
+    - Cái màu xanh
+    - Cái màu đỏ
+    - The blue one
+    - The red one
+    - The one on top
+    - First product
+    - Second product
 
 # ============================================================================
 # 2.5 CART & PURCHASE
@@ -245,6 +271,14 @@ nlu:
     - Cho tôi size [M](size)
     - Thêm màu [đỏ](color)
     - Cho [2](quantity) cái
+    - Add the first one to cart
+    - Add the second one
+    - I'll take number 1
+    - Put the first product in my cart
+    - Add number 2 to cart
+    - Thêm cái đầu tiên vào giỏ
+    - Cho cái thứ 2 vào giỏ
+    - Mua cái số 1
 
 - intent: view_cart
   examples: |
