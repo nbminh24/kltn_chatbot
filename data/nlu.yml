@@ -122,6 +122,18 @@ nlu:
     - quan-jean-nam-slim-fit
     - ao-thun-nam-cotton-basic
     - giay-the-thao-nam
+    - I'm finding [Be Bold Become Fearless](product_name)
+    - im finding [Be Bold Become Fearless](product_name)
+    - finding [Be Bold Become Fearless](product_name)
+    - search for [relaxed-fit-t-shirt: Be Bold Become Fearless](product_name)
+    - I want to find [relaxed-fit-t-shirt: Be Bold Become Fearless](product_name)
+    - show me [relaxed-fit-t-shirt: Sushi Meow](product_name)
+    - [relaxed-fit-t-shirt: Sushi Meow](product_name)
+    - [Be Bold Become Fearless](product_name)
+    - find [Sushi Meow](product_name)
+    - search [Meow](product_name)
+    - i want to search [meow](product_name)
+    - im looking for [meow](product_name)
 
 - intent: ask_product_price
   examples: |
@@ -831,6 +843,119 @@ nlu:
 - regex: product_code
   examples: |
     - [A-Z]{2,3}\d{4,8}
+
+# ============================================================================
+# 10. SLOT FILLING INTENTS (for add to cart flow)
+# ============================================================================
+
+- intent: inform_size
+  examples: |
+    - [S](size)
+    - [M](size)
+    - [L](size)
+    - [XL](size)
+    - [XXL](size)
+    - [XS](size)
+    - size [S](size)
+    - size [M](size)
+    - size [L](size)
+    - size [XL](size)
+    - size [XXL](size)
+    - I want [M](size)
+    - I want size [L](size)
+    - [XL](size) please
+    - [L](size) for me
+    - Give me [M](size)
+    - [XXL](size) size
+    - The [L](size) one
+    - cho tôi size [M](size)
+    - size [L](size) nhé
+    - [XL](size) được không
+    - tôi muốn [M](size)
+    - cho [L](size)
+    - [XXL](size) đi
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - size 28
+    - size 30
+    - 32 please
+
+- intent: inform_color
+  examples: |
+    - [black](color)
+    - [white](color)
+    - [blue](color)
+    - [red](color)
+    - [green](color)
+    - [yellow](color)
+    - [grey](color)
+    - [gray](color)
+    - [navy](color)
+    - [pink](color)
+    - [brown](color)
+    - [beige](color)
+    - color [black](color)
+    - color [white](color)
+    - [blue](color) color
+    - the [red](color) one
+    - I want [black](color)
+    - Give me [white](color)
+    - [navy](color) please
+    - màu [đen](color)
+    - màu [trắng](color)
+    - màu [xanh](color)
+    - màu [đỏ](color)
+    - màu [vàng](color)
+    - [đen](color) nhé
+    - cho màu [trắng](color)
+    - tôi muốn màu [xanh](color)
+    - [đỏ](color) được không
+    - [nâu](color)
+    - [xám](color)
+
+- intent: search_by_price
+  examples: |
+    - show me products under [$50](max_price)
+    - I want something cheaper than [$100](max_price)
+    - products below [$30](max_price)
+    - anything under [$20](max_price)
+    - show items less than [$15](max_price)
+    - I want to buy something cost lower than [$12](max_price)
+    - cost lower than [$20](max_price)
+    - cheaper than [$25](max_price)
+    - under [$50](max_price)
+    - below [$40](max_price)
+    - less than [$30](max_price)
+    - find products between [$10](min_price) and [$50](max_price)
+    - price range [$20](min_price) to [$100](max_price)
+    - from [$15](min_price) to [$40](max_price)
+    - show me [shirts](product_type) under [$20](max_price)
+    - [t-shirts](product_type) below [$15](max_price)
+    - cheap [jackets](product_type)
+    - affordable [shoes](product_type)
+    - budget friendly [pants](product_type)
+
+- intent: inform_quantity
+  examples: |
+    - [1](quantity)
+    - [2](quantity)
+    - [3](quantity)
+    - [4](quantity)
+    - [5](quantity)
+    - [10](quantity)
+    - quantity [2](quantity)
+    - [3](quantity) pieces
+    - I want [2](quantity)
+    - Give me [3](quantity)
+    - [5](quantity) items
+    - [2](quantity) cái
+    - [3](quantity) chiếc
+    - cho [2](quantity)
+    - tôi muốn [3](quantity)
+    - [5](quantity) sản phẩm
 
 # ============================================================================
 # 11. ENTITIES

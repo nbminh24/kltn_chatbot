@@ -18,6 +18,57 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def get_customer_id_from_tracker(tracker: Tracker) -> int:
+    """
+    Extract customer_id from tracker using multiple strategies:
+    1. Check metadata.customer_id (preferred - sent by backend)
+    2. Check slot customer_id
+    3. Verify JWT token if available
+    
+    Args:
+        tracker: Rasa tracker object
+        
+    Returns:
+        customer_id (int) or None if not authenticated
+    """
+    # Strategy 1: Get from message metadata (sent by backend/frontend)
+    metadata = tracker.latest_message.get("metadata", {})
+    customer_id = metadata.get("customer_id")
+    
+    if customer_id:
+        logger.info(f"✅ Got customer_id from metadata: {customer_id}")
+        return int(customer_id)
+    
+    # Strategy 2: Get from slot (set in previous conversation)
+    customer_id = tracker.get_slot("customer_id")
+    if customer_id:
+        logger.info(f"✅ Got customer_id from slot: {customer_id}")
+        return int(customer_id)
+    
+    # Strategy 3: Verify JWT token if available
+    jwt_token = metadata.get("user_jwt_token")
+    if jwt_token:
+        try:
+            api_client = get_api_client()
+            result = api_client.verify_token(jwt_token)
+            
+            if result.get("success") and result.get("data"):
+                customer_id = result["data"].get("customer_id")
+                logger.info(f"✅ Got customer_id from JWT verification: {customer_id}")
+                return int(customer_id)
+            else:
+                logger.warning(f"⚠️ JWT verification failed: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"❌ JWT verification error: {e}")
+    
+    logger.warning("⚠️ No customer_id found - user not authenticated")
+    return None
+
+
+# ============================================================================
 # GEMINI AI SAFETY - System Prompts & Validation
 # ============================================================================
 
@@ -145,13 +196,15 @@ def extract_product_name(user_text: str) -> str:
     
     # Remove common English prefixes (case-insensitive)
     en_patterns = [
-        r'^i\s+want\s+to\s+(find|buy|see|search)\s+(a\s+|an\s+|some\s+)?',
+        r'^i\s+want\s+to\s+(find|buy|see|search)\s+(for\s+)?(a\s+|an\s+|some\s+)?',
+        r'^i\s*m\s+(finding|searching|looking\s+for)\s+(a\s+|an\s+)?',
         r'^find\s+(me\s+)?(a\s+|an\s+|some\s+)?',
         r'^show\s+(me\s+)?(a\s+|an\s+|some\s+)?',
         r'^search\s+(for\s+)?(a\s+|an\s+|some\s+)?',
         r'^looking\s+for\s+(a\s+|an\s+|some\s+)?',
         r'^(can|could)\s+you\s+(find|show)\s+(me\s+)?(a\s+|an\s+)?',
         r'^i\s+need\s+(a\s+|an\s+|some\s+)?',
+        r'^finding\s+(a\s+|an\s+)?',
     ]
     
     # Remove common Vietnamese prefixes
@@ -221,16 +274,7 @@ class ActionSearchProducts(Action):
             api_client = get_api_client()
             result = api_client.search_products(search_query, limit=5)
             
-            logger.info(f"� API Response: {type(result)}, keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
-            
-            # 3. Handle different JSON structures (CRITICAL FIX)
-            # Backend might return: {"products": [...]} or {"data": [...]} or [...]
-            products = []
-            if isinstance(result, list):
-                products = result
-            elif isinstance(result, dict):
-                # Try both 'products' and 'data' keys
-                products = result.get("products") or result.get("data") or []
+            logger.info(f"📥 API Response: {type(result)}, keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
             
             # Check for errors
             if isinstance(result, dict) and result.get("error"):
@@ -241,6 +285,20 @@ class ActionSearchProducts(Action):
                 )
                 return [SlotSet("products_found", False)]
             
+            # 3. Parse chatbot API response structure
+            # Expected: {"success": true, "data": {"query": "...", "total": 5, "products": [...]}}
+            products = []
+            if isinstance(result, dict) and result.get("success") and result.get("data"):
+                data = result.get("data", {})
+                products = data.get("products", [])
+                logger.info(f"✅ Parsed {len(products)} products from chatbot API response")
+            elif isinstance(result, list):
+                # Fallback: direct list
+                products = result
+            elif isinstance(result, dict):
+                # Fallback: check for direct 'products' key
+                products = result.get("products", [])
+            
             # 4. Display results
             if not products:
                 dispatcher.utter_message(
@@ -249,35 +307,32 @@ class ActionSearchProducts(Action):
                 )
                 return [SlotSet("products_found", False)]
             
-            # Format message
-            message = f"Found {len(products)} products for '{search_query}':\n\n"
-            for i, p in enumerate(products[:5], 1):  # Show top 5
-                name = p.get("name", "Unknown Product")
-                price = p.get("selling_price") or p.get("price", 0)
-                stock = p.get("total_stock") or p.get("stock", 0)
-                
-                # Format price
-                if isinstance(price, (int, float)) and price > 0:
-                    price_str = f"{price:,.0f}₫"
-                else:
-                    price_str = "Contact for price"
-                
-                stock_icon = "✅" if stock > 0 else "😢"
-                message += f"{i}. **{name}** - {price_str} {stock_icon}\n"
+            # Format products for frontend ProductCarousel
+            # Chatbot API returns: product_id, name, category, price
+            product_list = []
+            for p in products:
+                product_list.append({
+                    "product_id": p.get("product_id") or p.get("id"),
+                    "name": p.get("name"),
+                    "slug": p.get("slug"),
+                    "price": float(p.get("price") or p.get("selling_price") or 0),
+                    "thumbnail": p.get("thumbnail") or p.get("thumbnail_url"),
+                    "rating": float(p.get("rating") or p.get("average_rating") or 0),
+                    "reviews": p.get("reviews") or p.get("total_reviews") or 0,
+                    "in_stock": p.get("in_stock", True)
+                })
             
-            if len(products) > 5:
-                message += f"\n_(+{len(products) - 5} more products)_\n"
-            
-            message += "\n💡 Which one interests you? I can provide more details! 😊"
+            # Send text + custom data for ProductCarousel
+            dispatcher.utter_message(
+                text=f"Found {len(products)} products for '{search_query}':",
+                json_message={
+                    "type": "product_list",
+                    "products": product_list
+                }
+            )
             
             dispatcher.utter_message(
-                text=message,
-                metadata={
-                    "source": "backend",
-                    "type": "product_list",
-                    "count": len(products),
-                    "query": search_query
-                }
+                text="💡 Click on any product to see details! 😊"
             )
             
             # Save to slots
@@ -293,6 +348,113 @@ class ActionSearchProducts(Action):
                 text="Oops, something went wrong. Please try again later! 🙏",
                 metadata={"source": "backend", "error": True, "exception": str(e)}
             )
+            return [SlotSet("products_found", False)]
+
+
+class ActionSearchByPrice(Action):
+    """Search products by price range - handles intent: search_by_price"""
+    
+    def name(self) -> Text:
+        return "action_search_by_price"
+    
+    def run(
+        self, 
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        
+        max_price_str = next(tracker.get_latest_entity_values("max_price"), None)
+        min_price_str = next(tracker.get_latest_entity_values("min_price"), None)
+        product_type = next(tracker.get_latest_entity_values("product_type"), None)
+        
+        max_price = None
+        min_price = None
+        
+        if max_price_str:
+            try:
+                max_price = float(str(max_price_str).replace("$", "").strip())
+            except ValueError:
+                pass
+        
+        if min_price_str:
+            try:
+                min_price = float(str(min_price_str).replace("$", "").strip())
+            except ValueError:
+                pass
+        
+        if not max_price and not min_price:
+            dispatcher.utter_message(text="What's your budget? For example: 'under $20' or 'between $10 and $50'")
+            return []
+        
+        logger.info(f"💰 Price search: min={min_price}, max={max_price}, type={product_type}")
+        
+        try:
+            api_client = get_api_client()
+            result = api_client.search_products(query=product_type, min_price=min_price, max_price=max_price, limit=10)
+            
+            products = []
+            if isinstance(result, dict):
+                products = result.get("products", [])
+            
+            if not products:
+                price_range_msg = ""
+                if min_price and max_price:
+                    price_range_msg = f"between ${min_price} and ${max_price}"
+                elif max_price:
+                    price_range_msg = f"under ${max_price}"
+                elif min_price:
+                    price_range_msg = f"over ${min_price}"
+                
+                dispatcher.utter_message(text=f"I couldn't find products {price_range_msg} 😅\n\nWould you like to try a different price range?")
+                return [SlotSet("products_found", False)]
+            
+            price_desc = ""
+            if min_price and max_price:
+                price_desc = f"between ${min_price} and ${max_price}"
+            elif max_price:
+                price_desc = f"under ${max_price}"
+            elif min_price:
+                price_desc = f"over ${min_price}"
+            
+            message = f"Found {len(products)} products {price_desc}:\n\n"
+            
+            for i, p in enumerate(products[:5], 1):
+                name = p.get("name", "Unknown Product")
+                price = p.get("selling_price") or p.get("price", 0)
+                
+                if isinstance(price, (int, float)):
+                    price_str = f"${price:.2f}"
+                else:
+                    try:
+                        price_str = f"${float(price):.2f}"
+                    except:
+                        price_str = "Contact for price"
+                
+                colors = p.get("available_colors", [])
+                color_info = ""
+                if colors and len(colors) > 0:
+                    if len(colors) <= 3:
+                        color_names = [c.get("name", c) if isinstance(c, dict) else c for c in colors]
+                        color_info = f" - {', '.join(color_names)}"
+                    else:
+                        color_info = f" - {len(colors)} colors"
+                
+                stock_icon = "✅" if p.get("in_stock") else "😢"
+                message += f"{i}. **{name}**{color_info} - {price_str} {stock_icon}\n"
+            
+            message += "\n💡 Which one interests you? 😊"
+            
+            dispatcher.utter_message(text=message)
+            
+            return [
+                SlotSet("products_found", True),
+                SlotSet("last_products", products[:10])
+            ]
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in ActionSearchByPrice: {e}")
+            dispatcher.utter_message(text="Oops, I had trouble searching by price. Please try again! 🙏")
             return [SlotSet("products_found", False)]
 
 
@@ -1093,33 +1255,122 @@ class ActionGetProductDetails(Action):
         
         # Format product details
         name = product.get("name", "Product")
-        price = product.get("selling_price") or product.get("price", 0)
+        price_raw = product.get("selling_price") or product.get("price")
         description = product.get("description", "High quality product")
-        stock = product.get("total_stock") or product.get("stock", 0)
+        in_stock = product.get("in_stock", False)
         category = product.get("category_name") or product.get("category", "General")
         material = product.get("material", "")
+        variants = product.get("variants", [])
+        available_colors = product.get("available_colors", [])
+        available_sizes = product.get("available_sizes", [])
         
-        if isinstance(price, (int, float)) and price > 0:
-            price_str = f"{price:,.0f}₫"
-        else:
-            price_str = "Contact for pricing"
+        # Parse price (backend returns string or number)
+        price_str = "Contact for pricing"
+        if price_raw:
+            try:
+                price_val = float(price_raw)
+                if price_val > 0:
+                    price_str = f"${price_val:.2f}"
+            except (ValueError, TypeError):
+                pass
         
-        response = f"📦 **{name}**\n\n"
+        # Contextual explanation if from search results
+        context_msg = ""
+        if product_index >= 0:
+            context_msg = f"This is product #{product_index + 1} from your previous search.\n\n"
+        
+        response = context_msg
+        response += f"📦 **{name}**\n\n"
         response += f"💰 Price: {price_str}\n"
-        response += f"📂 Category: {category}\n"
+        
+        # Show category only if meaningful
+        if category and category.lower() not in ["general", "unknown"]:
+            response += f"📂 Category: {category}\n"
         
         if material:
             response += f"🧵 Material: {material}\n"
         
-        if stock > 0:
-            response += f"✅ In stock - {stock} units available!\n\n"
+        # Show available colors
+        if available_colors and isinstance(available_colors, list) and len(available_colors) > 0:
+            color_names = [c.get("name", c) if isinstance(c, dict) else str(c) for c in available_colors]
+            if len(color_names) <= 3:
+                response += f"🎨 Available colors: {', '.join(color_names)}\n"
+            else:
+                response += f"🎨 Available colors: {', '.join(color_names[:3])} (+{len(color_names)-3} more)\n"
+        
+        # Show available sizes
+        if available_sizes and isinstance(available_sizes, list) and len(available_sizes) > 0:
+            size_names = [s.get("name", s) if isinstance(s, dict) else str(s) for s in available_sizes]
+            response += f"📏 Available sizes: {', '.join(size_names)}\n"
+        
+        # Stock status - use in_stock field from backend
+        if in_stock:
+            response += f"✅ In stock\n\n"
         else:
             response += f"😢 Currently out of stock\n\n"
         
         response += f"📝 **Description:**\n{description}\n\n"
-        response += "Would you like sizing advice, styling tips, or ready to add to cart? 😊"
         
-        dispatcher.utter_message(text=response)
+        # CTA based on stock status
+        if in_stock:
+            response += "Would you like to add this to your cart? 😊"
+        else:
+            response += "This item is out of stock. Would you like me to suggest similar products?"
+        
+        # NEW: Send product_actions metadata for button-based variant selection
+        custom_data = None
+        if in_stock and variants and len(variants) > 0:
+            # Extract unique colors and sizes with IDs
+            colors_map = {}
+            sizes_map = {}
+            
+            for v in variants:
+                # Extract color info
+                color_obj = v.get("color", {})
+                if isinstance(color_obj, dict):
+                    color_id = color_obj.get("id") or v.get("color_id")
+                    color_name = color_obj.get("name") or v.get("color_name")
+                    color_hex = color_obj.get("hex") or v.get("color_hex")
+                    
+                    if color_id and color_name and color_id not in colors_map:
+                        colors_map[color_id] = {
+                            "id": int(color_id),
+                            "name": str(color_name),
+                            "hex": str(color_hex) if color_hex else None
+                        }
+                
+                # Extract size info
+                size_obj = v.get("size", {})
+                if isinstance(size_obj, dict):
+                    size_id = size_obj.get("id") or v.get("size_id")
+                    size_name = size_obj.get("name") or v.get("size_name")
+                    
+                    if size_id and size_name and size_id not in sizes_map:
+                        sizes_map[size_id] = {
+                            "id": int(size_id),
+                            "name": str(size_name)
+                        }
+            
+            available_colors_with_ids = list(colors_map.values())
+            available_sizes_with_ids = list(sizes_map.values())
+            
+            # Only send metadata if we have both colors and sizes
+            if available_colors_with_ids and available_sizes_with_ids:
+                custom_data = {
+                    "type": "product_actions",
+                    "product_id": int(product_id),
+                    "product_name": name,
+                    "product_price": float(price_raw) if price_raw else 0,
+                    "product_thumbnail": product.get("thumbnail") or product.get("image_url") or "",
+                    "available_colors": available_colors_with_ids,
+                    "available_sizes": available_sizes_with_ids
+                }
+                logger.info(f"✅ Sending product_actions metadata: {len(available_colors_with_ids)} colors, {len(available_sizes_with_ids)} sizes")
+        
+        dispatcher.utter_message(
+            text=response,
+            json_message={"custom": custom_data} if custom_data else None
+        )
         
         # Save current product and update slot
         return [
@@ -1297,18 +1548,9 @@ class ActionGetShippingPolicy(Action):
         content = result.get("data", {}).get("content", "")
         
         if content:
-            # If content is too long, summarize with Gemini
+            # Truncate long content instead of using Gemini (avoid hallucination risk)
             if len(content) > 500:
-                gemini_client = get_gemini_client()
-                rag_result = gemini_client.generate_response_with_context(
-                    "Summarize the shipping policy in 2-3 sentences",
-                    content
-                )
-                
-                if rag_result.get("success"):
-                    dispatcher.utter_message(text=rag_result["response"])
-                else:
-                    dispatcher.utter_message(text=content[:500] + "...")
+                dispatcher.utter_message(text=content[:500] + "...")
             else:
                 dispatcher.utter_message(text=content)
         else:
@@ -1422,16 +1664,32 @@ class ActionRecommendProducts(Action):
         
         products = result["data"]
         
-        # Simple product list (Gemini integration optional)
-        response = "Here are some popular products:\n\n"
-        for i, product in enumerate(products[:3], 1):
-            name = product.get('name', 'Unknown')
-            price = product.get('selling_price', 0)
-            price_str = f"{price:,.0f}₫" if price > 0 else "Contact for price"
-            response += f"{i}. {name} - {price_str}\n"
+        # Format products for frontend ProductCarousel
+        product_list = []
+        for p in products:
+            product_list.append({
+                "product_id": p.get("id"),
+                "name": p.get("name"),
+                "slug": p.get("slug"),
+                "price": float(p.get("selling_price") or p.get("price") or 0),
+                "thumbnail": p.get("thumbnail_url") or p.get("thumbnail"),
+                "rating": float(p.get("average_rating") or p.get("rating") or 0),
+                "reviews": p.get("total_reviews") or p.get("reviews") or 0,
+                "in_stock": p.get("in_stock", False) or (p.get("stock_quantity", 0) > 0)
+            })
         
-        response += "\nWould you like to know more about any of these? 😊"
-        dispatcher.utter_message(text=response)
+        # Send text + custom data for ProductCarousel
+        dispatcher.utter_message(
+            text="Here are some recommendations for you:",
+            json_message={
+                "type": "product_list",
+                "products": product_list
+            }
+        )
+        
+        dispatcher.utter_message(
+            text="💡 Would you like to know more about any of these? 😊"
+        )
         
         return [SlotSet("last_products", products)]
 
@@ -1473,45 +1731,23 @@ class ActionCompareProducts(Action):
             )
             return []
         
-        # Use Gemini for intelligent comparison
-        gemini_client = get_gemini_client()
-        user_query = tracker.latest_message.get("text", "")
-
-        # Try to extract contextual information if available (e.g. "for someone who is short")
-        context_text = ""
-        latest_entities = tracker.latest_message.get("entities", [])
-        for ent in latest_entities:
-            if ent.get("entity") == "context":
-                context_text = ent.get("value", "")
-                break
-
-        if context_text:
-            prompt = (
-                "Compare these products and give advice based on this context: "
-                f"'{context_text}'. Original user query: {user_query}"
-            )
-        else:
-            prompt = f"Compare these products: {user_query}"
-
-        rag_result = gemini_client.generate_response_with_products(
-            prompt,
-            products
-        )
+        # Simple comparison without Gemini (avoid business data hallucination)
+        p1, p2 = products[0], products[1]
+        response = f"**Product Comparison:**\n\n"
+        response += f"**1. {p1.get('name')}**\n"
+        response += f"💰 Price: {p1.get('selling_price', 0):,.0f}₫\n"
+        response += f"📦 Stock: {'✅ Available' if p1.get('total_stock', 0) > 0 else '😢 Out of Stock'}\n"
+        if p1.get('category_name'):
+            response += f"📂 Category: {p1.get('category_name')}\n"
+        response += "\n"
+        response += f"**2. {p2.get('name')}**\n"
+        response += f"💰 Price: {p2.get('selling_price', 0):,.0f}₫\n"
+        response += f"📦 Stock: {'✅ Available' if p2.get('total_stock', 0) > 0 else '😢 Out of Stock'}\n"
+        if p2.get('category_name'):
+            response += f"📂 Category: {p2.get('category_name')}\n"
+        response += "\nWhich one would you like to know more about? 😊"
         
-        if rag_result.get("success"):
-            dispatcher.utter_message(text=rag_result["response"])
-        else:
-            # Fallback comparison
-            p1, p2 = products[0], products[1]
-            response = f"**Comparison:**\n\n"
-            response += f"**{p1.get('name')}**\n"
-            response += f"Price: ${p1.get('price')}\n"
-            response += f"Stock: {'Available' if p1.get('stock', 0) > 0 else 'Out of Stock'}\n\n"
-            response += f"**{p2.get('name')}**\n"
-            response += f"Price: ${p2.get('price')}\n"
-            response += f"Stock: {'Available' if p2.get('stock', 0) > 0 else 'Out of Stock'}\n"
-            
-            dispatcher.utter_message(text=response)
+        dispatcher.utter_message(text=response)
         
         return []
 
@@ -1558,123 +1794,25 @@ class ActionAddToCart(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        user_message = tracker.latest_message.get("text", "")
+        logger.info("🛒 Add to cart requested - DISABLED (advisory mode only)")
         
-        # Get filled slots from form
-        product_id = tracker.get_slot("current_product_id")
-        size = tracker.get_slot("cart_size")
-        color = tracker.get_slot("cart_color")
-        quantity = tracker.get_slot("cart_quantity") or 1
+        dispatcher.utter_message(
+            text="I'm here to help you find and explore products! 😊\n\n"
+                 "To add items to your cart, simply click on any product card I show you, "
+                 "and it will take you to the product detail page where you can:\n"
+                 "• View full product information\n"
+                 "• Select size and color\n"
+                 "• Add to cart\n"
+                 "• Read reviews\n\n"
+                 "Would you like me to help you find something specific?"
+        )
         
-        # Try to get product from context if not set
-        if not product_id:
-            last_products = tracker.get_slot("last_products")
-            last_product = tracker.get_slot("last_product")
-            
-            # Try contextual reference
-            if last_products and isinstance(last_products, list) and len(last_products) > 0:
-                product_index = self._parse_product_index(user_message)
-                
-                if product_index >= 0 and product_index < len(last_products):
-                    product = last_products[product_index]
-                    product_id = product.get("id") or product.get("product_id")
-                    logger.info(f"✅ Detected product by context: index={product_index}, id={product_id}")
-            
-            # Fallback to last viewed product
-            if not product_id and last_product:
-                product_id = last_product.get("id") or last_product.get("product_id")
-                logger.info(f"✅ Using last viewed product: id={product_id}")
-        
-        logger.info(f"🛒 Adding to cart: product_id={product_id}, size={size}, color={color}, qty={quantity}")
-        
-        # Validate required fields
-        if not product_id:
-            dispatcher.utter_message(
-                text="I need to know which product you want to add. Could you search for a product first? 😊"
-            )
-            return []
-        
-        if not size:
-            dispatcher.utter_message(
-                text="What size would you like? (S, M, L, XL, etc.)"
-            )
-            return []
-        
-        if not color:
-            dispatcher.utter_message(
-                text="What color would you prefer?"
-            )
-            return []
-        
-        # Call Backend API to add to cart
-        try:
-            api_client = get_api_client()
-            
-            # Prepare cart data
-            cart_data = {
-                "product_id": int(product_id),
-                "size": size,
-                "color": color,
-                "quantity": int(quantity)
-            }
-            
-            logger.info(f"📤 Calling backend add_to_cart API with: {cart_data}")
-            
-            # Call API (assuming you have this method in api_client)
-            result = api_client.add_to_cart(cart_data)
-            
-            # Handle response
-            if isinstance(result, dict):
-                if result.get("success") or result.get("data"):
-                    # Success
-                    product_name = result.get("product_name", "Product")
-                    dispatcher.utter_message(
-                        text=f"✅ Added {product_name} ({size}, {color}) to your cart!\n\n"
-                             f"Quantity: {quantity}\n\n"
-                             f"Would you like to continue shopping or check out? 🛍️"
-                    )
-                    
-                    # Reset cart slots for next add
-                    return [
-                        SlotSet("cart_size", None),
-                        SlotSet("cart_color", None),
-                        SlotSet("cart_quantity", 1)
-                    ]
-                elif result.get("error"):
-                    # API error
-                    error_msg = result.get("error", "Unknown error")
-                    logger.error(f"❌ Backend error: {error_msg}")
-                    dispatcher.utter_message(
-                        text=f"Sorry, I couldn't add that to your cart. {error_msg} 😅"
-                    )
-            else:
-                # Unexpected response
-                logger.error(f"❌ Unexpected API response: {result}")
-                dispatcher.utter_message(
-                    text="Something went wrong while adding to cart. Please try again! 🙏"
-                )
-        
-        except AttributeError:
-            # API client doesn't have add_to_cart method yet
-            logger.warning("⚠️ api_client.add_to_cart() not implemented yet")
-            dispatcher.utter_message(
-                text=f"✅ (Mock) Added to cart: Size {size}, Color {color}, Qty {quantity}\n\n"
-                     f"💡 Note: Backend API integration pending."
-            )
-            return [
-                SlotSet("cart_size", None),
-                SlotSet("cart_color", None),
-                SlotSet("cart_quantity", 1)
-            ]
-        
-        except Exception as e:
-            logger.error(f"❌ Exception in add_to_cart: {e}")
-            dispatcher.utter_message(
-                text="Oops, something went wrong. Please try again later! 🙏"
-            )
-        
-        return []
-
+        return [
+            SlotSet("cart_size", None),
+            SlotSet("cart_color", None),
+            SlotSet("cart_quantity", 1)
+        ]
+    
 
 class ActionViewCart(Action):
     """View current cart contents"""
@@ -1689,47 +1827,15 @@ class ActionViewCart(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        logger.info("🛒 Viewing cart")
+        logger.info("🛒 View cart requested - DISABLED (advisory mode only)")
         
-        try:
-            api_client = get_api_client()
-            result = api_client.get_cart()
-            
-            if isinstance(result, dict) and result.get("items"):
-                items = result.get("items", [])
-                total = result.get("total", 0)
-                
-                message = "🛍️ Your Cart:\n\n"
-                for i, item in enumerate(items, 1):
-                    name = item.get("product_name", "Product")
-                    size = item.get("size", "")
-                    color = item.get("color", "")
-                    qty = item.get("quantity", 1)
-                    price = item.get("price", 0)
-                    
-                    message += f"{i}. {name} ({size}, {color}) x{qty} - {price:,.0f}₫\n"
-                
-                message += f"\n**Total: {total:,.0f}₫**\n\n"
-                message += "Ready to check out? 😊"
-                
-                dispatcher.utter_message(text=message)
-            else:
-                dispatcher.utter_message(
-                    text="Your cart is empty! 🛒\n\nWould you like to search for products? 😊"
-                )
-        
-        except AttributeError:
-            logger.warning("⚠️ api_client.get_cart() not implemented yet")
-            dispatcher.utter_message(
-                text="🛒 (Mock) Your cart:\n\n"
-                     "1. Sample Product (M, Blue) x1 - 150,000₫\n\n"
-                     "💡 Note: Backend API integration pending."
-            )
-        except Exception as e:
-            logger.error(f"❌ Exception in view_cart: {e}")
-            dispatcher.utter_message(
-                text="I couldn't retrieve your cart right now. Please try again! 🙏"
-            )
+        dispatcher.utter_message(
+            text="I can help you find products, but I don't manage shopping carts! 😊\n\n"
+                 "To view or manage your cart:\n"
+                 "• Click the cart icon 🛒 in the top navigation\n"
+                 "• Or visit the cart page directly on our website\n\n"
+                 "Would you like me to help you find more products instead?"
+        )
         
         return []
 
@@ -1982,11 +2088,56 @@ Provide helpful advice based on the conversation context. Be concise (2-3 senten
 class ActionFallback(Action):
     """
     Handle messages the bot doesn't understand
-    UPDATED: Uses strict system prompt and response validation
+    UPDATED: Better domain detection and escalation logic
     """
     
     def name(self) -> Text:
         return "action_fallback"
+    
+    def _is_out_of_scope(self, message: str) -> bool:
+        """
+        Detect if query is clearly outside fashion/shopping domain
+        Returns True if out-of-scope
+        """
+        message_lower = message.lower()
+        
+        # Keywords indicating out-of-scope queries
+        out_of_scope_keywords = [
+            # Weather & News
+            "weather", "forecast", "temperature", "rain", "news", "politics",
+            
+            # Entertainment
+            "movie", "film", "music", "song", "concert", "game", "sport",
+            
+            # Food & Restaurants
+            "restaurant", "food", "recipe", "cooking", "eat", "dinner", "lunch",
+            
+            # Travel & Transportation
+            "flight", "hotel", "travel", "vacation", "trip", "booking",
+            
+            # Technology (non-product)
+            "software", "download", "install", "code", "program",
+            
+            # Health & Medical
+            "doctor", "medicine", "health", "disease", "symptom",
+            
+            # General Knowledge
+            "who is", "what is", "when was", "where is", "how to",
+            "explain", "define", "meaning of"
+        ]
+        
+        # Check if message contains out-of-scope keywords
+        for keyword in out_of_scope_keywords:
+            if keyword in message_lower:
+                # Double-check it's not about fashion products
+                fashion_context = any(w in message_lower for w in [
+                    "shirt", "pants", "dress", "jacket", "shoe", "bag", 
+                    "clothes", "wear", "fashion", "style", "fit", "size"
+                ])
+                if not fashion_context:
+                    return True
+        
+        return False
     
     def run(
         self, 
@@ -1999,7 +2150,36 @@ class ActionFallback(Action):
         intent = tracker.latest_message.get("intent", {}).get("name", "unknown")
         confidence = tracker.latest_message.get("intent", {}).get("confidence", 0.0)
         
-        logger.info(f"⚠️ Fallback triggered: intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
+        # Track consecutive fallbacks
+        fallback_count = tracker.get_slot("fallback_count") or 0
+        fallback_count += 1
+        
+        logger.info(f"⚠️ Fallback triggered (#{fallback_count}): intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
+        
+        # Check if query is out-of-scope
+        if self._is_out_of_scope(user_message):
+            logger.info(f"🚫 Out-of-scope query detected: {user_message[:50]}...")
+            dispatcher.utter_message(
+                text="I'm a fashion shopping assistant, so I can only help with:\n\n"
+                     "• Product searches & recommendations 👕\n"
+                     "• Sizing, styling & fit advice 📏\n"
+                     "• Order tracking & support 📦\n"
+                     "• Shipping & return policies 🚚\n\n"
+                     "For other topics, please consult the appropriate service! 😊",
+                metadata={"source": "rasa_template", "is_fallback": True, "out_of_scope": True}
+            )
+            return [SlotSet("fallback_count", 0)]  # Reset counter
+        
+        # Escalate to human after 2 consecutive failures
+        if fallback_count >= 2:
+            logger.warning(f"⚠️ Multiple fallbacks ({fallback_count}) - offering human escalation")
+            dispatcher.utter_message(
+                text="I'm having trouble understanding your request. 😅\n\n"
+                     "Would you like me to connect you with a human support agent who can help? "
+                     "Just say 'I want to speak to support' or 'Contact customer service'. 🙋",
+                metadata={"source": "rasa_template", "is_fallback": True, "escalation_offered": True}
+            )
+            return [SlotSet("fallback_count", fallback_count)]
         
         # Try to use Gemini for open-ended queries
         gemini_client = get_gemini_client()
@@ -2061,7 +2241,7 @@ Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
                     text="Can I help you with anything else? 😊",
                     metadata={"source": "rasa_template"}
                 )
-                return []
+                return [SlotSet("fallback_count", 0)]  # Reset counter on success
         
         # Standard fallback if Gemini fails or disabled
         logger.warning(f"⚠️ Gemini not available for fallback: {user_message[:50]}...")
@@ -2077,7 +2257,7 @@ Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
             metadata={"source": "rasa_template", "is_fallback": True}
         )
         
-        return []
+        return [SlotSet("fallback_count", fallback_count)]
 
 
 class ActionCreateSupportTicket(Action):

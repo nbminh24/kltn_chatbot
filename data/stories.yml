@@ -146,7 +146,6 @@ stories:
   steps:
   - intent: create_support_ticket
   - action: action_create_support_ticket
-  - action: utter_support_ticket_created
 
 - story: User asks contact information
   steps:
@@ -252,7 +251,6 @@ stories:
   - action: action_search_products
   - intent: create_support_ticket
   - action: action_create_support_ticket
-  - action: utter_support_ticket_created
 
 # ============================================================================
 # 7. CHITCHAT STORIES
@@ -284,7 +282,6 @@ stories:
   - action: action_report_order_error
   - intent: affirm
   - action: action_create_support_ticket
-  - action: utter_support_ticket_created
 
 - story: Product discovery journey
   steps:

@@ -76,6 +76,10 @@ intents:
   # ===== SYSTEM =====
   - nlu_fallback
   - inform
+  - inform_size
+  - inform_color
+  - inform_quantity
+  - search_by_price
 
 # ============================================================================
 # ENTITIES - Information extracted from user messages  
@@ -90,6 +94,8 @@ entities:
   - size                      # Size (S, M, L, XL)
   - material                  # Chất liệu (cotton, polyester)
   - price_range               # Khoảng giá
+  - min_price                 # Giá tối thiểu
+  - max_price                 # Giá tối đa
   
   # Order-related
   - order_id                  # Mã đơn hàng
@@ -173,12 +179,22 @@ slots:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: size
+      intent:
+        - inform_size
+        - add_to_cart
     - type: custom
   
   cart_color:
     type: text
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: color
+      intent:
+        - inform_color
+        - add_to_cart
     - type: custom
   
   cart_quantity:
@@ -186,6 +202,11 @@ slots:
     initial_value: 1
     influence_conversation: false
     mappings:
+    - type: from_entity
+      entity: quantity
+      intent:
+        - inform_quantity
+        - add_to_cart
     - type: custom
   
   # ===== ORDER CONTEXT =====
@@ -335,6 +356,7 @@ responses:
 actions:
   # ===== PRODUCT SEARCH & INQUIRY =====
   - action_search_products
+  - action_search_by_price
   - action_get_product_price
   - action_check_availability
   - action_get_product_details

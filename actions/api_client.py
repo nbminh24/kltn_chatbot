@@ -27,12 +27,21 @@ class BackendAPIClient:
         self.session = requests.Session()
         
         # Default headers for all requests
+        # Backend has TWO different guards:
+        # 1. ApiKeyGuard (for /internal/* endpoints) - expects x-api-key
+        # 2. InternalApiKeyGuard (for /api/chatbot/* endpoints) - expects X-Internal-Api-Key
+        # Send BOTH headers to satisfy both guards
         self.headers = {
-            "x-api-key": self.api_key,  # Backend expects lowercase 'x-api-key'
+            "x-api-key": self.api_key,              # For /internal/* endpoints
+            "X-Internal-Api-Key": self.api_key,     # For /api/chatbot/* endpoints
             "Content-Type": "application/json"
         }
         
-        logger.info(f"BackendAPIClient initialized with base_url: {self.base_url}")
+        # Log API key status (first 10 chars only for security)
+        if self.api_key:
+            logger.info(f"✅ BackendAPIClient initialized with base_url: {self.base_url}, API key: {self.api_key[:10]}...")
+        else:
+            logger.error(f"❌ INTERNAL_API_KEY is EMPTY! Backend will return 401. Set INTERNAL_API_KEY in .env file.")
     
     def _make_request(
         self, 
@@ -92,30 +101,46 @@ class BackendAPIClient:
     # PRODUCT ENDPOINTS
     # ========================================================================
     
-    def search_products(self, query: str, limit: int = 10, category: str = None) -> Dict[str, Any]:
+    def search_products(
+        self, 
+        query: str = None, 
+        limit: int = 10, 
+        category: str = None,
+        min_price: float = None,
+        max_price: float = None,
+        colors: List[str] = None,
+        sizes: List[str] = None,
+        in_stock: bool = None
+    ) -> Dict[str, Any]:
         """
-        Search for products by name or description
-        Internal API - requires x-api-key authentication
+        Search for products using chatbot API endpoint
+        Uses GET /api/chatbot/products/search with query parameters
         
         Args:
             query: Search query
             limit: Maximum number of results
-            category: Category slug filter (optional)
+            category: Category slug filter (not used in current implementation)
+            min_price: Minimum price (not used in current implementation)
+            max_price: Maximum price (not used in current implementation)
+            colors: List of color names (not used in current implementation)
+            sizes: List of size names (not used in current implementation)
+            in_stock: Only in-stock products (not used in current implementation)
             
         Returns:
-            Dict with 'products' list and 'count'
+            Dict with 'data' containing products list and metadata
         """
-        logger.info(f"Searching products with query: {query}, category: {category}")
+        logger.info(f"Searching products with query: {query}, limit: {limit}")
         
-        params = {
-            "search": query,
-            "limit": limit
-        }
-        if category:
-            params["category"] = category
+        # Build query parameters for chatbot search endpoint
+        params = {}
         
-        # Use INTERNAL endpoint - requires API key (already in headers)
-        return self._make_request("GET", "/internal/products", params=params)
+        if query:
+            params["query"] = query
+        if limit:
+            params["limit"] = limit
+        
+        # Use chatbot search endpoint that returns correct results
+        return self._make_request("GET", "/api/chatbot/products/search", params=params)
     
     def get_product_by_id(self, product_id: str) -> Dict[str, Any]:
         """Get detailed information about a specific product - Public API"""
@@ -360,6 +385,59 @@ class BackendAPIClient:
         }
         
         return self._make_request("POST", "/api/chatbot/cart/add", data=data)
+    
+    def get_cart(self, customer_id: int) -> Dict[str, Any]:
+        """
+        Get cart by customer ID using internal chatbot API
+        Endpoint: GET /api/chatbot/cart/:customer_id
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            customer_id: Customer ID
+            
+        Returns:
+            Cart data with items, subtotal, and total
+            {
+                "success": true,
+                "data": {
+                    "customer_id": 123,
+                    "items": [...],
+                    "total_items": 2,
+                    "subtotal": 300000,
+                    "total": 300000
+                }
+            }
+        """
+        logger.info(f"Getting cart for customer: {customer_id}")
+        return self._make_request("GET", f"/api/chatbot/cart/{customer_id}")
+    
+    def verify_token(self, jwt_token: str) -> Dict[str, Any]:
+        """
+        Verify JWT token and get customer information
+        Endpoint: POST /api/chatbot/auth/verify
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            jwt_token: JWT token from frontend
+            
+        Returns:
+            Customer information
+            {
+                "success": true,
+                "data": {
+                    "customer_id": 123,
+                    "email": "user@example.com",
+                    "name": "John Doe"
+                }
+            }
+        """
+        logger.info(f"Verifying JWT token: {jwt_token[:20]}...")
+        
+        data = {
+            "jwt_token": jwt_token
+        }
+        
+        return self._make_request("POST", "/api/chatbot/auth/verify", data=data)
     
     def add_to_wishlist(self, customer_id: int, variant_id: int) -> Dict[str, Any]:
         """

@@ -84,6 +84,21 @@ rules:
   - intent: add_to_cart
   - action: action_add_to_cart
 
+- rule: Add to cart with size informed
+  steps:
+  - intent: inform_size
+  - action: action_add_to_cart
+
+- rule: Add to cart with color informed
+  steps:
+  - intent: inform_color
+  - action: action_add_to_cart
+
+- rule: Add to cart with quantity informed
+  steps:
+  - intent: inform_quantity
+  - action: action_add_to_cart
+
 # ============================================================================
 # 5. DIRECT ACTION RULES (Single-turn interactions)
 # ============================================================================
@@ -119,7 +134,6 @@ rules:
   steps:
   - intent: create_support_ticket
   - action: action_create_support_ticket
-  - action: utter_support_ticket_created
 
 # ============================================================================
 # 7. FASHION E-COMMERCE RULES (Single-turn Q&A)
