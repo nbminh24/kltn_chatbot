@@ -43,6 +43,11 @@ rules:
   - intent: track_order
   - action: action_track_order
 
+- rule: Check delivery status
+  steps:
+  - intent: check_delivery_status
+  - action: action_get_delivery_status
+
 # ============================================================================
 # 4. FALLBACK & GEMINI AI RULES
 # ============================================================================

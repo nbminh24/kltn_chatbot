@@ -13,6 +13,7 @@ import re
 
 from .api_client import get_api_client
 from .gemini_client import get_gemini_client
+from .action_delivery_status import ActionGetDeliveryStatus
 
 logger = logging.getLogger(__name__)
 
@@ -1608,7 +1609,7 @@ class ActionTrackOrder(Action):
         try:
             if total_amount and total_amount != 0:
                 total_float = float(total_amount)
-                total_display = f"{total_float:,.0f}₫"
+                total_display = f"${total_float:,.2f}"
             else:
                 total_display = "N/A"
         except (ValueError, TypeError):

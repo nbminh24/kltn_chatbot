@@ -398,6 +398,61 @@ nlu:
     - can you check [0933613058](order_number)
     - please track [0912345678](order_number)
 
+- intent: check_delivery_status
+  examples: |
+    - when will I receive my order?
+    - when will my order arrive?
+    - when can I expect my order?
+    - delivery date for order [0000000032](order_number)
+    - estimated delivery time
+    - how long until my order arrives?
+    - where is my order?
+    - when is my package coming?
+    - delivery status
+    - track my delivery
+    - shipping information
+    - when will it be delivered?
+    - expected delivery date
+    - arrival time
+    - when should I expect my package?
+    - delivery estimate
+    - how many days until delivery?
+    - when will this arrive?
+    - check delivery status for [0000000001](order_number)
+    - my order [0000000032](order_number) delivery date
+    - order [0000000015](order_number) when will it arrive?
+    - when will order [0000000025](order_number) be delivered?
+    - delivery information for [0000000050](order_number)
+    - estimated delivery for order [0000000100](order_number)
+    - when is [0000000032](order_number) arriving?
+    - how long for order [0000000001](order_number)?
+    - delivery time for [0000000015](order_number)
+    - when does order [0000000025](order_number) arrive?
+    - what's the delivery date?
+    - when will I get my package?
+    - delivery tracking
+    - when arrives?
+    - shipping date
+    - expected arrival
+    - how long will delivery take?
+    - when can I expect delivery?
+    - what's the estimated delivery?
+    - when will you deliver my order?
+    - delivery timeframe
+    - how soon will it arrive?
+    - when should it arrive?
+    - arrival date
+    - when will I receive it?
+    - expected delivery for my order
+    - when does it arrive?
+    - delivery schedule
+    - how many days for delivery?
+    - when is the delivery?
+    - can you tell me when my order will arrive?
+    - I need to know the delivery date
+    - what's my delivery status?
+    - check when my order arrives
+
 - intent: cancel_order
   examples: |
     - I want to cancel order [#12345](order_number)

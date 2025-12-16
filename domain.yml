@@ -25,6 +25,7 @@ intents:
   
   # ===== ORDER MANAGEMENT =====
   - track_order
+  - check_delivery_status
   - cancel_order
   - modify_order
   
@@ -322,6 +323,39 @@ responses:
   - text: "⏰ Delivery time:\n• City: 1-2 days\n• Suburbs: 2-4 days\n• Provinces: 3-5 days\n\nWe ship super fast! 🚚"
   - text: "Fast delivery! Usually 2-3 days. Order today, wear this weekend! 😎"
   
+  utter_ask_delivery_options:
+  - text: |
+      🚚 **Delivery Options**
+      
+      **Standard Delivery**
+      • 3-5 Business Days
+      • Free (Domestic)
+      
+      **Express Delivery**
+      • 1-2 Business Days
+      • $15.99
+      
+      **Next Day Delivery**
+      • Order by 2PM
+      • $24.99
+      
+      We ship nationwide across Vietnam with free domestic delivery.
+      International shipping is also available to selected regions.
+  
+  utter_delivery_international:
+  - text: |
+      🌍 **International Shipping**
+      
+      **Asia** (Thailand, Singapore, Malaysia, etc.)
+      • 5-7 business days - $8.99
+      
+      **Rest of the world**
+      • 10-14 business days - $15.99
+      
+      Express international shipping available upon request.
+      
+      Note: Customs duties and taxes may apply depending on your country's regulations.
+  
   utter_fit_info:
   - text: "This is regular fit - not too loose or tight. Suits all body types! 👔"
   - text: "We have all fits: Slim fit (fitted), Regular (standard), Oversize (loose). What's your style?"
@@ -389,6 +423,7 @@ actions:
   
   # ===== ORDER MANAGEMENT =====
   - action_track_order
+  - action_get_delivery_status
   - action_cancel_order
   - action_cancel_order_request
   - action_report_order_error

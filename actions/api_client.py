@@ -257,6 +257,30 @@ class BackendAPIClient:
             auth_token=auth_token
         )
     
+    def get_delivery_estimation(self, order_id: str, auth_token: str = None) -> Dict[str, Any]:
+        """
+        Get delivery estimation for an order.
+        Backend endpoint: GET /orders/track/delivery-estimation?order_id={}
+        
+        Args:
+            order_id: Order number (e.g., "0000000032")
+            auth_token: User's JWT token
+            
+        Returns:
+            Dictionary containing delivery estimation data including:
+            - status, shipping_method, destination
+            - estimated_delivery: {from, to, date, formatted}
+            - tracking_url
+        """
+        logger.info(f"Fetching delivery estimation for order: {order_id}")
+        params = {"order_id": order_id}
+        return self._make_request(
+            "GET",
+            "/orders/track/delivery-estimation",
+            params=params,
+            auth_token=auth_token
+        )
+    
     def search_purchased_products(self, product_name: str, auth_token: str) -> Dict[str, Any]:
         """
         Search products from user's purchase history.
