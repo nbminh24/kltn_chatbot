@@ -400,6 +400,22 @@ nlu:
     - Delivery time
     - Shipping information
     - Do you offer express shipping?
+    - How fast is shipping?
+    - What are the delivery times?
+    - Do you deliver to my country?
+    - Is shipping free?
+    - How much does shipping cost?
+    - Tell me about shipping
+    - Shipping details
+    - Delivery information
+    - How long for delivery?
+    - When will it arrive?
+    - Do you have fast delivery?
+    - International shipping available?
+    - Shipping to Vietnam?
+    - How long to ship to Hanoi?
+    - Delivery to HCMC?
+    - Express delivery options?
 
 - intent: ask_return_policy
   examples: |
@@ -413,6 +429,22 @@ nlu:
     - How long do I have to return?
     - What's the exchange process?
     - Return window
+    - Tell me about returns
+    - How to return a product?
+    - Can I get my money back?
+    - Refund information
+    - Return information
+    - What if I don't like it?
+    - Can I exchange this?
+    - How many days to return?
+    - Return time limit?
+    - Refund process
+    - Do you accept returns?
+    - Return conditions
+    - Can I send it back?
+    - Return and exchange
+    - How do refunds work?
+    - Refund timeline
 
 - intent: ask_payment_methods
   examples: |
@@ -425,6 +457,23 @@ nlu:
     - Can I pay on delivery?
     - Payment methods available
     - Cash on delivery?
+    - What are the payment options?
+    - How do I pay?
+    - Can I use credit card?
+    - Do you accept Visa?
+    - Do you accept Mastercard?
+    - Payment methods
+    - Can I pay with card?
+    - Do you have COD?
+    - Cash on delivery available?
+    - Can I pay later?
+    - VNPay accepted?
+    - Do you take VNPay?
+    - What payment do you accept?
+    - How to pay for order?
+    - Payment information
+    - Can I pay cash?
+    - Do you accept PayPal?
 
 - intent: ask_warranty
   examples: |

@@ -243,24 +243,24 @@ slots:
 responses:
   # Greetings & Farewells
   utter_greet:
-  - text: "Hello! 👋 Welcome to our store. How can I assist you today?"
-  - text: "Hi there! I'm here to help you with products, orders, and any questions you have. What can I do for you?"
-  - text: "Welcome! I'm your shopping assistant. Feel free to ask about products, orders, or policies."
+  - text: "Welcome to LeCas! 👋 I'm here to help you discover casually elegant menswear. What can I assist you with today?"
+  - text: "Hello! Looking for premium menswear? I'm your LeCas shopping assistant. How can I help?"
+  - text: "Welcome to LeCas - Casually Elegant Every Moment. Feel free to ask about products or styling advice!"
   
   utter_goodbye:
-  - text: "Goodbye! Have a great day! 😊"
-  - text: "Thanks for chatting! Feel free to come back anytime. Take care!"
-  - text: "See you later! Don't hesitate to reach out if you need anything else."
+  - text: "Thank you for visiting LeCas! Stay casually elegant. 😊"
+  - text: "See you soon at LeCas! Remember - Casually Elegant Every Moment. ✨"
+  - text: "Thanks for chatting! Feel free to reach out anytime you need style advice or assistance."
   
   utter_you_are_welcome:
-  - text: "You're welcome! Anything else I can help with?"
-  - text: "Happy to help! Is there anything else you'd like to know?"
-  - text: "My pleasure! Let me know if you need anything else."
+  - text: "My pleasure! Anything else I can help with?"
+  - text: "Absolutely! Is there anything else you'd like to know?"
+  - text: "Happy to help! Let me know if you need anything else."
   
   # Bot Identity
   utter_i_am_bot:
-  - text: "I'm an AI shopping assistant here to help you find products, track orders, and answer your questions!"
-  - text: "Yes, I'm a bot! But I'm here to make your shopping experience smooth and easy. How can I help?"
+  - text: "I'm LeCas Virtual Shopping Assistant - here to help you discover premium menswear and answer your questions!"
+  - text: "Yes, I'm an AI assistant! But I'm here to make your shopping experience effortlessly elegant. How can I help?"
   
   # Product-related responses
   utter_no_products_found:
@@ -285,15 +285,15 @@ responses:
   
   # Policy responses (fallback if API fails)
   utter_default_shipping_policy:
-  - text: "We offer free standard shipping on orders over $50. Standard delivery takes 5-7 business days. Express shipping ($15) takes 2-3 days."
+  - text: "Best of all, we offer free shipping on all domestic orders in Vietnam! 🚚\n• Major Cities (Hanoi, HCMC, Da Nang): 1-2 business days\n• Nationwide: 3-5 business days\n\nFor international shipping, we deliver to over 50 countries!"
   
   utter_default_return_policy:
-  - text: "Returns are accepted within 30 days of purchase. Items must be unused in original packaging. Refunds processed in 5-7 business days."
+  - text: "Our policy is simple: You have 30 days for a full refund if the item is unworn/unwashed and in original condition. Refunds are processed within 5-7 business days once we receive your return. (Shipping costs are non-refundable.)"
   
   # Support responses
   utter_contact_info:
-  - text: "You can reach us at:\n📧 Email: support@store.com\n📞 Phone: 1-800-SHOP-NOW\n💬 Live chat available 9 AM - 9 PM"
-  - text: "Contact our support team:\n• Email: help@store.com\n• Phone: +1 (800) 123-4567\n• Chat: Available on our website"
+  - text: "Please don't worry, we are here to help! You can reach our Customer Support team through this chat, and we'll handle your request promptly. 😊"
+  - text: "Our team is ready to assist you! Just describe your issue here with your order number, and we'll receive it immediately to resolve it quickly for you!"
   
   # Fashion E-commerce Responses (NEW)
   utter_size_guide:

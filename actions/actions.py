@@ -73,28 +73,43 @@ def get_customer_id_from_tracker(tracker: Tracker) -> int:
 # ============================================================================
 
 # CRITICAL: Gemini is ONLY for fashion knowledge, NOT business data
-GEMINI_SYSTEM_PROMPT = """You are a FASHION KNOWLEDGE CONSULTANT (NOT a sales assistant or e-commerce agent).
+GEMINI_SYSTEM_PROMPT = """You are LeCas Virtual Shopping Assistant - representing a pioneering menswear brand founded in 2025.
 
-✅ YOU CAN answer about:
+BRAND IDENTITY:
+- Brand: LeCas - Redefining casual male fashion
+- Slogan: "Casually Elegant Every Moment"
+- Focus: Premium menswear essentials for the modern man who believes in subtle power dressing
+- Core Values: Quality First, Customer Focused, Authenticity, Sustainability
+- Tone: Professional yet friendly, confident, sophisticated but approachable
+
+YOUR ROLE: Fashion Knowledge Consultant
+
+YOU CAN answer about:
 - General fashion style advice (how to match clothes, color coordination)
-- Material knowledge (cotton, polyester, denim, wool properties and care)
-- Body type and fit guidance (slim fit vs regular, what suits different shapes)
-- Fashion trends and tips (seasonal trends, classic styles)
-- Styling for different occasions (casual, formal, beach, wedding)
-- General wardrobe and clothing care tips
+- Material knowledge and care (cotton, polyester, denim, wool properties)
+- Body type and fit guidance for menswear (slim fit vs regular, what suits different shapes)
+- Fashion trends for modern men (seasonal trends, classic styles)
+- Styling for different occasions (casual, formal, business, smart casual)
+- General wardrobe building and clothing care tips
 
-❌ YOU ABSOLUTELY CANNOT answer about (say "Let me check our system for that information"):
-- Specific product prices or costs ("How much is X?")
-- Stock availability ("Is X in stock?")
-- Order status or tracking ("Where is my order?")
+REDIRECT to our system for:
+- Specific product prices or costs
+- Stock availability
+- Order status or tracking
 - Shipping times or delivery information
 - Store promotions, discounts, or coupon codes
-- Specific product details from our inventory (colors, sizes available)
-- Product comparisons from our store's catalog
-- Purchase recommendations for specific items
+- Specific product details from our inventory
+- Product comparisons from our store catalog
 
-CRITICAL RULE: If the user asks about any forbidden topic, you MUST respond with:
-"I don't have access to that specific information from our store system. Let me connect you with our product database to get accurate details."
+RESPONSE STYLE:
+- Be confident and reassuring (use phrases like Absolutely, Best of all)
+- Sound sophisticated yet effortless (match Casually Elegant philosophy)
+- Keep responses concise (2-3 sentences)
+- Use structured format when listing (bullet points)
+- Subtle emoji use (1-2 maximum, not excessive)
+- Show expertise while being helpful and supportive
+
+CRITICAL: If asked about forbidden topics, say: I do not have access to that specific information from our store system. Let me connect you with our product database to get accurate details.
 
 Keep responses concise (2-3 sentences), friendly, and helpful within your allowed scope."""
 
@@ -119,34 +134,35 @@ def validate_gemini_response(response_text: str, user_message: str) -> tuple[boo
             - safe_response: Original text or filtered fallback message
     """
     # Keywords that indicate Gemini is answering forbidden topics
-    FORBIDDEN_KEYWORDS = [
-        # Price-related
-        "price", "cost", "$", "₫", "vnd", "dollar", "usd",
-        "cheap", "expensive", "affordable", "pay",
+    # Use word boundaries to avoid false positives
+    FORBIDDEN_PATTERNS = [
+        # Price-related (with context)
+        r'\$\d+', r'₫\d+', r'\d+\s*vnd', r'\d+\s*dollar', r'\d+\s*usd',
+        r'\bprice\s+is\b', r'\bcosts?\s+\d+', r'\bfor\s+\$', 
+        r'\bcheap\s+at\b', r'\bexpensive\s+at\b',
         
-        # Stock-related
-        "in stock", "out of stock", "available", "unavailable",
-        "sold out", "inventory",
+        # Stock-related (precise phrases)
+        r'\bin\s+stock\b', r'\bout\s+of\s+stock\b', 
+        r'\bsold\s+out\b', r'\binventory\s+(is|has)\b',
         
-        # Order-related
-        "order", "tracking", "shipped", "delivery", "arrive",
-        "status", "processing",
+        # Order-related (with context)
+        r'\border\s+status\b', r'\btracking\s+number\b', 
+        r'\bshipped\s+on\b', r'\bdelivery\s+date\b',
+        r'\bwill\s+arrive\b', r'\bprocessing\s+your\b',
         
-        # Promotion-related
-        "discount", "promotion", "sale", "off", "coupon",
-        "deal", "special offer",
-        
-        # Specific numeric prices (pattern matching)
-        "\\d+\\s*(dong|vnd|usd|dollar)", 
+        # Promotion-related (precise phrases)
+        r'\d+%\s*off\b', r'\bdiscount\s+code\b', 
+        r'\bpromotion\s+(ends|starts)\b', r'\bcoupon\s+code\b',
+        r'\bspecial\s+offer\b', r'\bon\s+sale\b',
     ]
     
     response_lower = response_text.lower()
     
-    # Check for forbidden keywords
+    # Check for forbidden patterns using regex
     violated_keywords = []
-    for keyword in FORBIDDEN_KEYWORDS:
-        if keyword in response_lower:
-            violated_keywords.append(keyword)
+    for pattern in FORBIDDEN_PATTERNS:
+        if re.search(pattern, response_lower):
+            violated_keywords.append(pattern)
     
     if violated_keywords:
         logger.warning(
@@ -268,6 +284,21 @@ class ActionSearchProducts(Action):
                 metadata={"source": "rasa_template"}
             )
             return []
+        
+        # Check if query is clearly out-of-scope (weather, news, etc.)
+        user_text = tracker.latest_message.get('text', '').lower()
+        out_of_scope_keywords = ["weather", "forecast", "temperature", "rain", "news", "movie", "song", "restaurant", "recipe", "flight", "hotel"]
+        if any(keyword in user_text for keyword in out_of_scope_keywords):
+            logger.info(f"🚫 Out-of-scope query detected in product search: {user_text[:50]}")
+            dispatcher.utter_message(
+                text="I'm a fashion shopping assistant focused on menswear! I can help you with:\n\n"
+                     "• Product searches & recommendations 👕\n"
+                     "• Styling advice & fit guidance 📏\n"
+                     "• Order tracking & policies 📦\n\n"
+                     "What can I help you find today?",
+                metadata={"source": "rasa_template", "out_of_scope": True}
+            )
+            return [SlotSet("products_found", False)]
         
         # 2. Call Backend API
         try:
@@ -1541,7 +1572,7 @@ class ActionGetShippingPolicy(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text="Here's our standard shipping policy: We offer free standard shipping on orders over $50. Standard delivery takes 5-7 business days. Express shipping is available for $15 and takes 2-3 business days."
+                text="Shipping depends on your location within Vietnam:\n• Major Cities (Hanoi, HCMC, Da Nang): Typically 1-2 business days\n• Nationwide Delivery: Approximately 3-5 business days\n\nBest of all, we offer free shipping on all domestic orders!\n\nWe also ship to over 50 countries:\n• Asia (Thailand, Singapore, Malaysia, etc.): 5-7 business days for $8.99\n• Rest of the World: 10-14 business days for $15.99"
             )
             return []
         
@@ -1579,7 +1610,7 @@ class ActionGetReturnPolicy(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text="We accept returns within 30 days of purchase. Items must be unused and in original packaging. Refunds are processed within 5-7 business days."
+                text="Our policy is simple: You have 30 days for a full refund if the item is unworn/unwashed and in original condition. Want to start a return? Just type 'Start Return' and include your Order Number! We'll handle it from there.\n\nOnce we receive your returned item, the refund will be processed within 5-7 business days. (Shipping costs are non-refundable.)"
             )
             return []
         
@@ -1607,7 +1638,7 @@ class ActionGetPaymentMethods(Action):
     ) -> List[Dict[Text, Any]]:
         
         dispatcher.utter_message(
-            text="We accept the following payment methods:\n• Credit/Debit Cards (Visa, Mastercard, Amex)\n• PayPal\n• Apple Pay\n• Google Pay\n• Bank Transfer"
+            text="To make things convenient for you, LeCas accepts:\n• COD (Cash on Delivery) for domestic orders in Vietnam\n• VNPay for domestic orders in Vietnam\n• Major credit cards (Visa, Mastercard, Amex) for international purchases\n• PayPal for international purchases\n\nPayment options are indicated at checkout based on your location."
         )
         
         return []

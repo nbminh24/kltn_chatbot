@@ -47,7 +47,19 @@ class GeminiRAGClient:
         # Initialize Gemini
         try:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(self.model_name)
+            
+            # Configure safety settings to avoid blocking
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            ]
+            
+            self.model = genai.GenerativeModel(
+                self.model_name,
+                safety_settings=safety_settings
+            )
             logger.info(f"✅ Gemini {self.model_name} initialized successfully")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Gemini: {e}")
@@ -74,12 +86,44 @@ class GeminiRAGClient:
             # Direct call to Gemini - no complex processing
             response = self.model.generate_content(message)
             
-            if response and response.text:
-                logger.info(f"✅ Gemini responded: {response.text[:50]}...")
-                return {
-                    "success": True,
-                    "response": response.text
-                }
+            # Check if response exists and has content
+            if response:
+                # Check if response was blocked
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                    block_reason = getattr(response.prompt_feedback, 'block_reason', None)
+                    if block_reason:
+                        logger.warning(f"⚠️ Gemini blocked response: {block_reason}")
+                        return {
+                            "success": False,
+                            "response": "I cannot provide a response to that query."
+                        }
+                
+                # Try to get text from response
+                if hasattr(response, 'text') and response.text:
+                    logger.info(f"✅ Gemini responded: {response.text[:50]}...")
+                    return {
+                        "success": True,
+                        "response": response.text
+                    }
+                
+                # Try alternative way to get content
+                if hasattr(response, 'candidates') and response.candidates:
+                    first_candidate = response.candidates[0]
+                    if hasattr(first_candidate, 'content') and hasattr(first_candidate.content, 'parts'):
+                        text = ''.join(part.text for part in first_candidate.content.parts if hasattr(part, 'text'))
+                        if text:
+                            logger.info(f"✅ Gemini responded (alternative): {text[:50]}...")
+                            return {
+                                "success": True,
+                                "response": text
+                            }
+                
+                logger.warning("⚠️ Gemini response has no text content")
+            else:
+                logger.warning("⚠️ Gemini returned None response")
+                
+        except AttributeError as e:
+            logger.error(f"❌ Gemini Response Structure Error: {e}")
         except Exception as e:
             logger.error(f"❌ Gemini Generation Error: {e}")
         
