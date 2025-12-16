@@ -70,6 +70,14 @@ class BackendAPIClient:
         # Add JWT token if provided (for user-specific endpoints)
         if auth_token:
             headers["Authorization"] = f"Bearer {auth_token}"
+            logger.info(f"🔐 Sending request with JWT token (first 20 chars): {auth_token[:20]}...")
+        else:
+            logger.warning("⚠️ No auth_token provided for this request")
+        
+        # Debug: Log request details
+        logger.info(f"📤 {method} {url}")
+        logger.info(f"📋 Query params: {params}")
+        logger.info(f"🔑 Headers: {list(headers.keys())}")
         
         try:
             response = self.session.request(
@@ -80,11 +88,17 @@ class BackendAPIClient:
                 headers=headers,
                 timeout=self.timeout
             )
+            
+            logger.info(f"📥 Response status: {response.status_code}")
+            
             response.raise_for_status()
             return response.json()
             
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+            logger.error(f"❌ HTTP Error: {e.response.status_code}")
+            logger.error(f"❌ Response body: {e.response.text}")
+            logger.error(f"❌ Request URL: {url}")
+            logger.error(f"❌ Request headers sent: {list(headers.keys())}")
             return {
                 "error": True,
                 "message": f"API request failed: {e.response.status_code}",

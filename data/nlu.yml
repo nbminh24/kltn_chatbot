@@ -341,6 +341,29 @@ nlu:
     - Order tracking
     - Delivery status
     - Shipping update
+    - Can I view my order?
+    - Can I view my order
+    - view my order
+    - I want to view my order
+    - Let me view my order
+    - Show me my order
+    - see my order
+    - I'd like to see my order
+    - Can I see my order?
+    - view order
+    - see order
+    - show my orders
+    - view my orders
+    - list my orders
+    - I want to see my orders
+    - show me all my orders
+    - what orders do I have?
+    - do I have any orders?
+    - my order history
+    - view order history
+    - show order list
+    - list of my orders
+    - all my orders
     - help me check the order ID [1](order_number)
     - check order ID [2](order_number)
     - track order ID [123](order_number)
@@ -361,6 +384,19 @@ nlu:
     - what's the status of [666](order_number)
     - check order [777](order_number) please
     - help me check order [888](order_number)
+    - my order number is [0933613058](order_number)
+    - order number is [0912345678](order_number)
+    - the order number is [0987654321](order_number)
+    - [0933613058](order_number)
+    - [0912345678](order_number)
+    - [0987654321](order_number)
+    - track [0933613058](order_number)
+    - check [0912345678](order_number)
+    - order [0987654321](order_number)
+    - my order is [1234567890](order_number)
+    - order number [9876543210](order_number)
+    - can you check [0933613058](order_number)
+    - please track [0912345678](order_number)
 
 - intent: cancel_order
   examples: |

@@ -708,14 +708,20 @@ class ActionReportOrderError(Action):
         error_type = next(tracker.get_latest_entity_values("error_type"), None)
         quantity = next(tracker.get_latest_entity_values("quantity"), "")
 
-        user_token = tracker.get_slot("user_jwt_token")
-        if not user_token:
+        # Use helper to extract customer_id from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text=(
                     "To review issues with a specific order, please sign in first so I can verify your purchases."
                 )
             )
             return []
+        
+        # Get JWT token for API calls
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
         if not order_number or not product_name or not error_type:
             dispatcher.utter_message(
@@ -774,14 +780,20 @@ class ActionRequestReturnOrExchange(Action):
         reason = next(tracker.get_latest_entity_values("reason"), None)
         product_to_get = next(tracker.get_latest_entity_values("product_to_get"), "")
 
-        user_token = tracker.get_slot("user_jwt_token")
-        if not user_token:
+        # Use helper to extract customer_id from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text=(
                     "To request an exchange or return, please sign in so I can verify your order details."
                 )
             )
             return []
+        
+        # Get JWT token for API calls
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
         if not order_number or not product_to_return or not reason:
             dispatcher.utter_message(
@@ -837,14 +849,20 @@ class ActionReportQualityIssue(Action):
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         defect_description = next(tracker.get_latest_entity_values("defect_description"), None)
 
-        user_token = tracker.get_slot("user_jwt_token")
-        if not user_token:
+        # Use helper to extract customer_id from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text=(
                     "To review a quality issue for a purchase, please sign in so I can check your order history."
                 )
             )
             return []
+        
+        # Get JWT token for API calls
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
         if not product_name or not defect_description:
             dispatcher.utter_message(
@@ -896,14 +914,20 @@ class ActionHandlePolicyException(Action):
         policy_type = next(tracker.get_latest_entity_values("policy_type"), None)
         reason = next(tracker.get_latest_entity_values("reason"), None)
 
-        user_token = tracker.get_slot("user_jwt_token")
-        if not user_token:
+        # Use helper to extract customer_id from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text=(
                     "For special policy exceptions, please sign in first so we can verify your purchase."
                 )
             )
             return []
+        
+        # Get JWT token for API calls
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
         if not product_name or not policy_type or not reason:
             dispatcher.utter_message(
@@ -952,14 +976,20 @@ class ActionSetStockNotification(Action):
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         size = next(tracker.get_latest_entity_values("size"), None)
 
-        user_token = tracker.get_slot("user_jwt_token")
-        if not user_token:
+        # Use helper to extract customer_id from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text=(
                     "To receive stock notifications, please sign in so we can link the alert to your account."
                 )
             )
             return []
+        
+        # Get JWT token for API calls
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
         if not product_name:
             dispatcher.utter_message(
@@ -1430,14 +1460,26 @@ class ActionTrackOrder(Action):
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
-        # Get user JWT token from slot (set by frontend)
-        user_token = tracker.get_slot("user_jwt_token")
+        # Debug: Log all extracted entities
+        all_entities = tracker.latest_message.get("entities", [])
+        logger.info(f"📋 Extracted entities: {all_entities}")
+        logger.info(f"🔢 Order number extracted: {order_number}")
+        logger.info(f"📦 Product name extracted: {product_name}")
         
-        if not user_token:
+        # Check if user is logged in - use helper to extract from metadata or slots
+        customer_id = get_customer_id_from_tracker(tracker)
+        
+        if not customer_id:
             dispatcher.utter_message(
                 text="To track your order, please sign in to your account first."
             )
             return []
+        
+        logger.info(f"🔐 User authenticated - customer_id: {customer_id}")
+        
+        # Get JWT token for API calls (from metadata or slot)
+        metadata = tracker.latest_message.get("metadata", {})
+        user_token = metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
         
         api_client = get_api_client()
         
@@ -1471,13 +1513,60 @@ class ActionTrackOrder(Action):
             logger.info(f"Tracking order by number: {order_number}")
             order_id = order_number.replace("#", "")
         else:
-            dispatcher.utter_message(
-                text="Please provide your order number or tell me which product you ordered."
-            )
+            # No order number or product name provided - show recent orders list
+            logger.info("No order number provided - showing order list")
+            
+            result = api_client.get_user_orders(user_token, limit=5)
+            
+            if result.get("error") or not result.get("data"):
+                dispatcher.utter_message(
+                    text="I couldn't retrieve your orders. Please try again or provide a specific order number."
+                )
+                return []
+            
+            orders = result.get("data", [])
+            
+            if len(orders) == 0:
+                dispatcher.utter_message(
+                    text="You don't have any orders yet. Start shopping to place your first order! 🛍️"
+                )
+                return []
+            
+            # Format order list
+            response = f"📦 **Your Recent Orders** ({len(orders)} orders)\n\n"
+            
+            from datetime import datetime
+            for i, order in enumerate(orders[:5], 1):
+                order_num = order.get("order_number", "N/A")
+                status = order.get("fulfillment_status") or order.get("status", "Unknown")
+                total = order.get("total_amount") or order.get("total", 0)
+                date_raw = order.get("created_at", "")
+                
+                try:
+                    if date_raw:
+                        dt = datetime.fromisoformat(date_raw.replace('Z', '+00:00'))
+                        date_str = dt.strftime("%b %d, %Y")
+                    else:
+                        date_str = "N/A"
+                except:
+                    date_str = date_raw if date_raw else "N/A"
+                
+                total_str = f"{total:,.0f}₫" if total else "N/A"
+                
+                response += f"{i}. **#{order_num}** - {status.title()} - {total_str}\n"
+                response += f"   📅 {date_str}\n\n"
+            
+            response += "💬 Reply with an order number to see details (e.g., '0000000001')"
+            
+            dispatcher.utter_message(text=response)
             return []
         
         # Get order details
         result = api_client.get_order_details(order_id, user_token)
+        
+        # Debug: Log the full response
+        logger.info(f"🔍 Backend response structure: {list(result.keys())}")
+        logger.info(f"🔍 Full response: {result}")
         
         if result.get("error"):
             dispatcher.utter_message(
@@ -1485,15 +1574,53 @@ class ActionTrackOrder(Action):
             )
             return []
         
-        order = result.get("data", {})
-        status = order.get("status", "Unknown")
-        created_at = order.get("created_at", "N/A")
-        total = order.get("total", "N/A")
+        # Backend returns order data directly (not wrapped in "data" key)
+        order = result
+        logger.info(f"📦 Order data extracted: {order}")
+        logger.info(f"📊 Order keys: {list(order.keys()) if order else 'EMPTY'}")
+        
+        # Handle backend field names (fulfillment_status/status, total_amount/total)
+        status = order.get("fulfillment_status") or order.get("status", "Unknown")
+        payment_status = order.get("payment_status", "")
+        total_amount = order.get("total_amount") or order.get("total", 0)
+        created_at_raw = order.get("created_at", "")
+        
+        # Debug: Log field extraction
+        logger.info(f"🔍 fulfillment_status: {order.get('fulfillment_status')}")
+        logger.info(f"🔍 status: {order.get('status')}")
+        logger.info(f"🔍 total_amount: {order.get('total_amount')}")
+        logger.info(f"🔍 total: {order.get('total')}")
+        logger.info(f"🔍 created_at: {order.get('created_at')}")
+        logger.info(f"📊 Final values - status={status}, total={total_amount}, date={created_at_raw}")
+        
+        # Format date for better display
+        try:
+            from datetime import datetime
+            if created_at_raw:
+                dt = datetime.fromisoformat(created_at_raw.replace('Z', '+00:00'))
+                created_at = dt.strftime("%B %d, %Y")
+            else:
+                created_at = "N/A"
+        except:
+            created_at = created_at_raw if created_at_raw else "N/A"
+        
+        # Format total with currency (convert string to float first)
+        try:
+            if total_amount and total_amount != 0:
+                total_float = float(total_amount)
+                total_display = f"{total_float:,.0f}₫"
+            else:
+                total_display = "N/A"
+        except (ValueError, TypeError):
+            total_display = str(total_amount) if total_amount else "N/A"
         
         response = f"📦 **Order #{order_number}**\n\n"
-        response += f"📊 **Status:** {status}\n"
+        response += f"📊 **Status:** {status.title() if status != 'Unknown' else status}"
+        if payment_status:
+            response += f" | Payment: {payment_status.title()}"
+        response += "\n"
         response += f"📅 **Placed on:** {created_at}\n"
-        response += f"💰 **Total:** ${total}\n\n"
+        response += f"💰 **Total:** {total_display}\n\n"
         
         # Add tracking info if available
         tracking_number = order.get("tracking_number")
