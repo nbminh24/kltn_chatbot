@@ -1,0 +1,44 @@
+- intent: inform_cancel_reason
+  examples: |
+    - changed my mind
+    - I changed my mind
+    - changed mind
+    - I don't want it anymore
+    - don't want it
+    - ordered wrong item
+    - I ordered the wrong item
+    - wrong item
+    - wrong product
+    - ordered wrong product
+    - wrong size
+    - wrong color
+    - wrong size or color
+    - I ordered wrong size
+    - the size is wrong
+    - wrong colour
+    - size color wrong
+    - found a better price
+    - I found it cheaper
+    - found cheaper elsewhere
+    - better price somewhere else
+    - too expensive
+    - delivery is too slow
+    - delivery too slow
+    - takes too long
+    - too slow delivery
+    - shipping is slow
+    - waiting too long
+    - payment issue
+    - payment problem
+    - I can't pay
+    - problem with payment
+    - payment not working
+    - duplicate order
+    - I ordered twice
+    - duplicate
+    - ordered by mistake twice
+    - double order
+    - other reason
+    - other
+    - something else
+    - different reason

@@ -455,15 +455,47 @@ nlu:
 
 - intent: cancel_order
   examples: |
-    - I want to cancel order [#12345](order_number)
+    - I want to cancel order [0000000032](order_number)
     - Cancel my order
-    - Can I cancel order [#67890](order_number)?
+    - Can I cancel order [0000000015](order_number)?
     - I need to cancel my recent order
     - Stop my order
     - Cancel this purchase
     - I don't want this order anymore
     - How do I cancel an order?
-    - Can you help me cancel order [#54321](order_number)?
+    - Can you help me cancel order [0000000050](order_number)?
+    - please cancel my order
+    - I'd like to cancel order [0000000001](order_number)
+    - can you cancel this order for me?
+    - cancel order [0000000025](order_number) please
+    - I want to cancel [0000000100](order_number)
+    - help me cancel my purchase
+    - stop order [0000000032](order_number)
+    - I need to cancel order number [0000000045](order_number)
+    - can I still cancel my order?
+    - is it possible to cancel order [0000000020](order_number)?
+    - I'd like to stop my order [0000000010](order_number)
+    - cancel [0000000033](order_number)
+    - I want to cancel order [0000000044](order_number) I changed my mind
+    - cancel order [0000000055](order_number) because I ordered the wrong item
+    - I need to cancel [0000000066](order_number) wrong size
+    - cancel my order [0000000077](order_number) I ordered wrong color
+    - I want to cancel order [0000000088](order_number) found a better price
+    - cancel [0000000099](order_number) delivery is too slow
+    - I need to cancel order [0000000011](order_number) payment issue
+    - cancel order [0000000022](order_number) duplicate order
+    - I changed my mind about order [0000000034](order_number)
+    - I ordered the wrong item on order [0000000045](order_number)
+    - wrong size for order [0000000056](order_number)
+    - I want to cancel because wrong color
+    - cancel my order I found it cheaper elsewhere
+    - the delivery takes too long cancel my order
+    - I can't pay for this order cancel it
+    - I accidentally ordered twice cancel order [0000000067](order_number)
+    - cancel order [0000000078](order_number) don't want it anymore
+    - I need to cancel my order changed my mind
+    - cancel because I ordered wrong product
+    - stop my order wrong size color
 
 - intent: modify_order
   examples: |
@@ -1096,6 +1128,51 @@ nlu:
     - cho [2](quantity)
     - tôi muốn [3](quantity)
     - [5](quantity) sản phẩm
+
+- intent: inform_cancel_reason
+  examples: |
+    - changed my mind
+    - I changed my mind
+    - changed mind
+    - I don't want it anymore
+    - don't want it
+    - ordered wrong item
+    - I ordered the wrong item
+    - wrong item
+    - wrong product
+    - ordered wrong product
+    - wrong size
+    - wrong color
+    - wrong size or color
+    - I ordered wrong size
+    - the size is wrong
+    - wrong colour
+    - size color wrong
+    - found a better price
+    - I found it cheaper
+    - found cheaper elsewhere
+    - better price somewhere else
+    - too expensive
+    - delivery is too slow
+    - delivery too slow
+    - takes too long
+    - too slow delivery
+    - shipping is slow
+    - waiting too long
+    - payment issue
+    - payment problem
+    - I can't pay
+    - problem with payment
+    - payment not working
+    - duplicate order
+    - I ordered twice
+    - duplicate
+    - ordered by mistake twice
+    - double order
+    - other reason
+    - other
+    - something else
+    - different reason
 
 # ============================================================================
 # 11. ENTITIES

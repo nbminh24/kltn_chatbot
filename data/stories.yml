@@ -86,10 +86,10 @@ stories:
   steps:
   - intent: cancel_order
     entities:
-    - order_number: "#12345"
-  - action: action_cancel_order_request
-  - intent: affirm
-  - action: utter_order_cancellation_confirmed
+    - order_number: "0000000032"
+  - action: action_cancel_order
+  - intent: inform_cancel_reason
+  - action: action_cancel_order
 
 # ============================================================================
 # 3. FAQ & POLICIES STORIES

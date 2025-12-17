@@ -1635,11 +1635,37 @@ class ActionTrackOrder(Action):
         return [SlotSet("last_order", order)]
 
 
-class ActionCancelOrderRequest(Action):
-    """Handle order cancellation request"""
+class ActionCancelOrder(Action):
+    """Handle order cancellation with status-based logic and reason tracking"""
     
     def name(self) -> Text:
-        return "action_cancel_order_request"
+        return "action_cancel_order"
+    
+    # Cancellation reason mapping
+    CANCEL_REASONS = {
+        "changed my mind": "changed_mind",
+        "changed mind": "changed_mind",
+        "don't want": "changed_mind",
+        "ordered wrong item": "ordered_wrong_item",
+        "wrong item": "ordered_wrong_item",
+        "wrong product": "ordered_wrong_item",
+        "wrong size": "wrong_size_color",
+        "wrong color": "wrong_size_color",
+        "wrong colour": "wrong_size_color",
+        "size color": "wrong_size_color",
+        "better price": "found_better_price",
+        "cheaper": "found_better_price",
+        "found cheaper": "found_better_price",
+        "too slow": "delivery_too_slow",
+        "delivery slow": "delivery_too_slow",
+        "takes too long": "delivery_too_slow",
+        "payment issue": "payment_issue",
+        "payment problem": "payment_issue",
+        "can't pay": "payment_issue",
+        "duplicate": "duplicate_order",
+        "ordered twice": "duplicate_order",
+        "double order": "duplicate_order",
+    }
     
     def run(
         self, 
@@ -1648,32 +1674,154 @@ class ActionCancelOrderRequest(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        order_number = next(tracker.get_latest_entity_values("order_number"), None)
-        
-        if not order_number:
-            dispatcher.utter_message(text="Which order would you like to cancel?")
+        customer_id = get_customer_id_from_tracker(tracker)
+        if not customer_id:
+            dispatcher.utter_message(text="To cancel an order, please sign in first! 🔐")
             return []
         
-        # For now, create a support ticket for cancellation
-        dispatcher.utter_message(
-            text=f"I understand you want to cancel order {order_number}. Let me connect you with our support team to process this request."
-        )
+        # Get order number from entity or slot
+        order_number = next(tracker.get_latest_entity_values("order_number"), None)
+        if not order_number:
+            order_number = tracker.get_slot("cancel_order_number")
         
-        # Create support ticket
-        api_client = get_api_client()
-        user_message = tracker.latest_message.get("text", "")
+        if not order_number:
+            dispatcher.utter_message(text="Which order would you like to cancel? Please provide the order number.")
+            return []
         
-        api_client.create_support_ticket(
-            subject=f"Order Cancellation Request - {order_number}",
-            message=f"Customer requested cancellation of order {order_number}",
-            user_message=user_message
-        )
+        # Check if we already have a cancel reason from previous turn
+        cancel_reason_slot = tracker.get_slot("cancel_reason")
         
-        dispatcher.utter_message(
-            text="A support ticket has been created. Our team will contact you within 24 hours to process your cancellation."
-        )
+        # Try to extract reason from current message
+        user_message = tracker.latest_message.get("text", "").lower()
+        extracted_reason = self._extract_cancel_reason(user_message)
         
-        return []
+        # If no reason in slot and no reason extracted, ask for reason
+        if not cancel_reason_slot and extracted_reason == "other":
+            dispatcher.utter_message(
+                text=f"Before I cancel order {order_number}, could you tell me the reason for cancellation?\n\n"
+                     f"• Changed my mind\n"
+                     f"• Ordered wrong item\n"
+                     f"• Wrong size or color\n"
+                     f"• Found a better price\n"
+                     f"• Delivery is too slow\n"
+                     f"• Payment issue\n"
+                     f"• Duplicate order\n"
+                     f"• Other reason"
+            )
+            return [
+                SlotSet("cancel_order_number", order_number),
+                SlotSet("cancel_reason", None)  # Wait for user to provide reason
+            ]
+        
+        # Use reason from slot if available, otherwise use extracted reason
+        cancel_reason = cancel_reason_slot if cancel_reason_slot else extracted_reason
+        
+        # If we just got the reason from user's response, extract it again
+        if not cancel_reason_slot and extracted_reason != "other":
+            cancel_reason = extracted_reason
+        elif not cancel_reason_slot:
+            # User provided reason in free text, try to match it
+            cancel_reason = extracted_reason
+        
+        logger.info(f"🚫 Cancel request: order={order_number}, customer={customer_id}, reason={cancel_reason}")
+        
+        try:
+            api_client = get_api_client()
+            
+            # Convert order_number to order_id (order_number is zero-padded ID)
+            # Example: "0000000032" -> 32
+            try:
+                order_id = int(order_number)
+            except (ValueError, TypeError):
+                dispatcher.utter_message(
+                    text=f"Invalid order number format. Please provide a valid order number like 0000000032."
+                )
+                return []
+            
+            logger.info(f"📦 Attempting to cancel order_id={order_id}")
+            
+            # Call backend cancel API - it will validate ownership and status
+            result = api_client.cancel_order(
+                order_id=order_id,
+                customer_id=int(customer_id),
+                cancel_reason=cancel_reason
+            )
+            
+            # Handle response based on backend error codes
+            if result.get("success"):
+                # Successful cancellation
+                dispatcher.utter_message(
+                    text=f"✅ Your order {order_number} has been successfully canceled.\n\n"
+                         f"If you need help placing a new order, feel free to let me know! 😊"
+                )
+                return [
+                    SlotSet("cancel_order_number", None),
+                    SlotSet("cancel_reason", None)
+                ]
+            
+            # Handle specific error cases
+            error_code = result.get("error", "")
+            error_message = result.get("message", "")
+            suggestion = result.get("suggestion", "")
+            
+            if error_code == "ALREADY_CANCELLED":
+                dispatcher.utter_message(
+                    text=f"This order has already been canceled. ✅\n\nIs there anything else I can help you with?"
+                )
+            elif error_code == "CANNOT_CANCEL_CONFIRMED":
+                dispatcher.utter_message(
+                    text=f"Your order has been confirmed and is waiting for delivery. 📦\n\n"
+                         f"At this stage, the order can no longer be canceled.\n\n"
+                         f"💡 You can refuse the package upon delivery or request a return after receiving it, "
+                         f"according to our return policy."
+                )
+            elif error_code == "CANNOT_CANCEL_SHIPPING":
+                tracking = result.get("tracking_number", "")
+                carrier = result.get("carrier", "")
+                
+                tracking_info = f"\n📍 Tracking: {tracking} ({carrier})" if tracking else ""
+                
+                dispatcher.utter_message(
+                    text=f"Your order is currently being shipped. 🚚{tracking_info}\n\n"
+                         f"At this stage, cancellation is no longer possible.\n\n"
+                         f"💡 A common option is to refuse the delivery when the courier arrives, "
+                         f"or initiate a return after the package is delivered."
+                )
+            elif error_code == "CANNOT_CANCEL_DELIVERED":
+                dispatcher.utter_message(
+                    text=f"This order has already been delivered. ✅\n\n"
+                         f"Cancellation is no longer possible, but you may request a return or refund "
+                         f"according to our return policy if the product meets the conditions."
+                )
+            else:
+                # Generic error
+                dispatcher.utter_message(
+                    text=f"I couldn't cancel this order right now. {error_message}\n\n"
+                         f"Please contact our support team for assistance. 🙏"
+                )
+            
+            return [
+                SlotSet("cancel_order_number", None),
+                SlotSet("cancel_reason", None)
+            ]
+            
+        except Exception as e:
+            logger.error(f"❌ Exception in cancel order: {e}", exc_info=True)
+            dispatcher.utter_message(
+                text="Oops! Something went wrong. Please try again or contact support! 🙏"
+            )
+            return [
+                SlotSet("cancel_order_number", None),
+                SlotSet("cancel_reason", None)
+            ]
+    
+    def _extract_cancel_reason(self, user_message: str) -> str:
+        """Extract cancellation reason from user message"""
+        for phrase, reason_code in self.CANCEL_REASONS.items():
+            if phrase in user_message:
+                logger.info(f"✅ Detected reason: {phrase} -> {reason_code}")
+                return reason_code
+        return "other"
 
 
 # ============================================================================

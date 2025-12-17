@@ -80,6 +80,7 @@ intents:
   - inform_size
   - inform_color
   - inform_quantity
+  - inform_cancel_reason
   - search_by_price
 
 # ============================================================================
@@ -229,6 +230,22 @@ slots:
     mappings:
     - type: custom
   
+  cancel_order_number:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: from_entity
+      entity: order_number
+      intent:
+        - cancel_order
+    - type: custom
+  
+  cancel_reason:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: custom
+  
   # ===== CONVERSATION CONTEXT =====
   context:
     type: text
@@ -342,6 +359,46 @@ responses:
       We ship nationwide across Vietnam with free domestic delivery.
       International shipping is also available to selected regions.
   
+  utter_ask_cancel_reason:
+  - text: |
+      Before I proceed with cancellation, could you tell me the reason?
+      
+      • Changed my mind
+      • Ordered the wrong item
+      • Wrong size or color
+      • Found a better price elsewhere
+      • Delivery time is too long
+      • Payment issue
+      • Duplicate order
+      • Other reason
+      
+      Please type the number or the reason.
+  
+  utter_ask_cancel_confirmation:
+  - text: "Are you sure you want to cancel this order?"
+  
+  utter_cancel_success:
+  - text: "✅ Your order has been successfully canceled. If you need help placing a new order, feel free to let me know 😊"
+  
+  utter_cancel_cannot_confirmed:
+  - text: |
+      Your order is currently confirmed and waiting for delivery.
+      At this stage, the order can no longer be canceled.
+      
+      📦 You can still refuse the package upon delivery or request a return after receiving it, according to our return policy.
+  
+  utter_cancel_cannot_shipping:
+  - text: |
+      Your order is currently being shipped, so it cannot be canceled anymore.
+      
+      👉 A common option is to refuse the delivery when the courier arrives, or initiate a return after the package is delivered.
+  
+  utter_cancel_cannot_delivered:
+  - text: |
+      This order has already been delivered, so cancellation is no longer possible.
+      
+      🔄 You may request a return or refund according to our return policy if the product meets the conditions.
+  
   utter_delivery_international:
   - text: |
       🌍 **International Shipping**
@@ -425,7 +482,6 @@ actions:
   - action_track_order
   - action_get_delivery_status
   - action_cancel_order
-  - action_cancel_order_request
   - action_report_order_error
   - action_request_return_or_exchange
   - action_report_quality_issue

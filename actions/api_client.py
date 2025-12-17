@@ -281,6 +281,44 @@ class BackendAPIClient:
             auth_token=auth_token
         )
     
+    def cancel_order(self, order_id: str, cancel_reason: str, auth_token: str = None) -> Dict[str, Any]:
+        """
+        Cancel an order with a specified reason.
+        Backend endpoint: POST /orders/{order_id}/cancel
+        
+        Only allowed when order status is 'pending'.
+        Backend will validate and return appropriate error for other statuses.
+        
+        Args:
+            order_id: Order ID (numeric, e.g., "32")
+            cancel_reason: Reason for cancellation (enum value)
+            auth_token: User's JWT token
+            
+        Valid cancel_reason values:
+            - changed_mind
+            - ordered_wrong_item
+            - wrong_size_color
+            - found_better_price
+            - delivery_too_slow
+            - payment_issue
+            - duplicate_order
+            - other
+            
+        Returns:
+            Success: { "success": true, "order": {...} }
+            Error: { "success": false, "error": "...", "suggestion": "..." }
+        """
+        logger.info(f"Cancelling order {order_id} with reason: {cancel_reason}")
+        
+        payload = {"cancel_reason": cancel_reason}
+        
+        return self._make_request(
+            "POST",
+            f"/orders/{order_id}/cancel",
+            json_data=payload,
+            auth_token=auth_token
+        )
+    
     def search_purchased_products(self, product_name: str, auth_token: str) -> Dict[str, Any]:
         """
         Search products from user's purchase history.
@@ -499,7 +537,7 @@ class BackendAPIClient:
         
         return self._make_request("POST", "/api/chatbot/wishlist/add", data=data)
     
-    def cancel_order(self, order_id: int, customer_id: int) -> Dict[str, Any]:
+    def cancel_order(self, order_id: int, customer_id: int, cancel_reason: str = "other") -> Dict[str, Any]:
         """
         Cancel order using internal chatbot API
         Endpoint: POST /api/chatbot/orders/:id/cancel
@@ -508,14 +546,18 @@ class BackendAPIClient:
         Args:
             order_id: Order ID to cancel
             customer_id: Customer ID (for verification)
+            cancel_reason: Reason for cancellation (enum: changed_mind, ordered_wrong_item, 
+                          wrong_size_color, found_better_price, delivery_too_slow, 
+                          payment_issue, duplicate_order, other)
             
         Returns:
-            Order cancellation response
+            Order cancellation response with status-based suggestions
         """
-        logger.info(f"Cancelling order: order_id={order_id}, customer_id={customer_id}")
+        logger.info(f"Cancelling order: order_id={order_id}, customer_id={customer_id}, reason={cancel_reason}")
         
         data = {
-            "customer_id": customer_id
+            "customer_id": customer_id,
+            "cancel_reason": cancel_reason
         }
         
         return self._make_request("POST", f"/api/chatbot/orders/{order_id}/cancel", data=data)

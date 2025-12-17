@@ -48,6 +48,16 @@ rules:
   - intent: check_delivery_status
   - action: action_get_delivery_status
 
+- rule: Always cancel order
+  steps:
+  - intent: cancel_order
+  - action: action_cancel_order
+
+- rule: Provide cancel reason
+  steps:
+  - intent: inform_cancel_reason
+  - action: action_cancel_order
+
 # ============================================================================
 # 4. FALLBACK & GEMINI AI RULES
 # ============================================================================
