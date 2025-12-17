@@ -58,6 +58,11 @@ rules:
   - intent: inform_cancel_reason
   - action: action_cancel_order
 
+- rule: Request human handoff immediately
+  steps:
+  - intent: request_human
+  - action: action_request_human
+
 # ============================================================================
 # 4. FALLBACK & GEMINI AI RULES
 # ============================================================================

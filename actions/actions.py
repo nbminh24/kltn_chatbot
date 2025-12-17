@@ -1825,6 +1825,109 @@ class ActionCancelOrder(Action):
 
 
 # ============================================================================
+# HUMAN HANDOFF ACTION
+# ============================================================================
+
+class ActionRequestHuman(Action):
+    """
+    Handle human handoff request - connect customer to human agent
+    
+    Flow:
+    1. Extract session_id from metadata
+    2. Call backend handoff API
+    3. Send confirmation message
+    4. Pause bot conversation
+    """
+    
+    def name(self) -> Text:
+        return "action_request_human"
+    
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        
+        logger.info("🤝 Customer requesting human agent")
+        
+        # Extract session_id from metadata
+        session_id = self._extract_session_id(tracker)
+        
+        if not session_id:
+            logger.error("❌ No session_id found in tracker")
+            dispatcher.utter_message(response="utter_request_human_error")
+            return []
+        
+        logger.info(f"📋 Session ID: {session_id}")
+        
+        # Call backend handoff API
+        api_client = get_api_client()
+        success = self._request_handoff(api_client, session_id)
+        
+        if success:
+            logger.info(f"✅ Handoff request successful for session {session_id}")
+            
+            # Send confirmation message
+            dispatcher.utter_message(response="utter_request_human_initiated")
+            
+            # CRITICAL: Pause bot to prevent interference
+            from rasa_sdk.events import ConversationPaused
+            return [ConversationPaused()]
+        else:
+            logger.error(f"❌ Handoff request failed for session {session_id}")
+            dispatcher.utter_message(response="utter_request_human_error")
+            return []
+    
+    def _extract_session_id(self, tracker: Tracker) -> int:
+        """
+        Extract session_id from tracker metadata.
+        Backend sends session_id when calling Rasa webhook.
+        """
+        # Method 1: From metadata (recommended)
+        metadata = tracker.latest_message.get("metadata", {})
+        session_id = metadata.get("session_id")
+        
+        if session_id:
+            try:
+                return int(session_id)
+            except (ValueError, TypeError):
+                logger.error(f"❌ Invalid session_id format: {session_id}")
+        
+        # Method 2: Parse from sender_id (fallback)
+        sender_id = tracker.sender_id
+        logger.warning(f"⚠️ No session_id in metadata, trying sender_id: {sender_id}")
+        
+        if sender_id and "_" in sender_id:
+            try:
+                numeric_part = sender_id.split("_")[-1]
+                return int(numeric_part)
+            except (ValueError, IndexError):
+                pass
+        
+        return None
+    
+    def _request_handoff(self, api_client, session_id: int) -> bool:
+        """
+        Call backend API to request human handoff.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            result = api_client.request_handoff(session_id)
+            
+            if result.get("success") or result.get("data"):
+                logger.info(f"✅ Backend handoff API success: {result}")
+                return True
+            else:
+                logger.error(f"❌ Backend handoff API error: {result}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to call backend handoff API: {e}")
+            return False
+
+
+# ============================================================================
 # FAQ & POLICY ACTIONS
 # ============================================================================
 

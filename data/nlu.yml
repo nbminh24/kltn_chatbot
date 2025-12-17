@@ -1174,6 +1174,44 @@ nlu:
     - something else
     - different reason
 
+- intent: request_human
+  examples: |
+    - I need to talk to a human
+    - Can I speak with a person?
+    - I want to talk to an agent
+    - Connect me to customer support
+    - I need human help
+    - Talk to admin
+    - I want to speak with someone
+    - Get me a human agent
+    - This bot isn't helping
+    - I need real support
+    - Connect me to a real person
+    - Let me talk to someone
+    - I want human assistance
+    - Transfer me to an agent
+    - Can I chat with a human?
+    - I prefer talking to a person
+    - Bot is not helpful
+    - I need to speak to support
+    - Connect me with support team
+    - I want to talk to customer service
+    - tôi cần gặp admin
+    - tôi muốn nói chuyện với người thật
+    - kết nối với nhân viên hỗ trợ
+    - bot không giúp được tôi
+    - tôi cần hỗ trợ trực tiếp
+    - cho tôi nói chuyện với người
+    - tôi muốn gặp nhân viên
+    - kết nối với admin
+    - tôi cần nói với người thật
+    - bot này không giúp được
+    - tôi muốn nói chuyện với hỗ trợ
+    - cho tôi gặp người
+    - tôi cần được tư vấn trực tiếp
+    - chuyển cho nhân viên
+    - tôi muốn chat với người
+
 # ============================================================================
 # 11. ENTITIES
 # ============================================================================

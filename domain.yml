@@ -81,6 +81,7 @@ intents:
   - inform_color
   - inform_quantity
   - inform_cancel_reason
+  - request_human
   - search_by_price
 
 # ============================================================================
@@ -285,6 +286,15 @@ responses:
   utter_i_am_bot:
   - text: "I'm LeCas Virtual Shopping Assistant - here to help you discover premium menswear and answer your questions!"
   - text: "Yes, I'm an AI assistant! But I'm here to make your shopping experience effortlessly elegant. How can I help?"
+  
+  # Human Handoff
+  utter_request_human_initiated:
+  - text: "I'm connecting you with one of our human support agents. Please wait a moment... 👤"
+  - text: "Let me invite a human agent to assist you. They'll be with you shortly! 🙋"
+  
+  utter_request_human_error:
+  - text: "Sorry, I couldn't connect you to a human agent at this time. Please try again or contact us via email at support@lecas.com 🙏"
+  - text: "I'm having trouble connecting you right now. Please try again in a moment or email us at support@lecas.com"
   
   # Product-related responses
   utter_no_products_found:
@@ -498,6 +508,7 @@ actions:
   - action_create_support_ticket
   - action_set_stock_notification
   - action_check_discount
+  - action_request_human
   
   # ===== FALLBACK & AI =====
   - action_ask_gemini

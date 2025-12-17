@@ -562,6 +562,27 @@ class BackendAPIClient:
         
         return self._make_request("POST", f"/api/chatbot/orders/{order_id}/cancel", data=data)
     
+    def request_handoff(self, session_id: int) -> Dict[str, Any]:
+        """
+        Request human handoff for a chat session
+        Endpoint: POST /api/v1/chat/handoff
+        Requires: X-Internal-Api-Key header
+        
+        Args:
+            session_id: Chat session ID
+            
+        Returns:
+            Handoff request result
+        """
+        logger.info(f"Requesting human handoff for session: {session_id}")
+        
+        data = {
+            "session_id": session_id,
+            "reason": "customer_request"
+        }
+        
+        return self._make_request("POST", "/api/v1/chat/handoff", data=data)
+    
     def get_size_chart(self, category: str) -> Dict[str, Any]:
         """
         Get size chart for product category
