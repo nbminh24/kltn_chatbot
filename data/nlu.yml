@@ -2,1218 +2,834 @@ version: "3.1"
 
 nlu:
 # ============================================================================
-# 1. GREETINGS & FAREWELLS
+# 1. CHÀO HỎI & TẠM BIỆT
 # ============================================================================
 - intent: greet
   examples: |
-    - hey
-    - hello
-    - hi
-    - hello there
-    - good morning
-    - good evening
-    - hey there
-    - hi there
-    - greetings
-    - what's up
-    - yo
-    - sup
     - chào
     - xin chào
-    - hi bot
-    - hey bot
-    - hello bot
+    - hi
+    - hello
+    - chào bạn
+    - chào shop
+    - chào em
+    - hì
+    - hế nhô
+    - alo
+    - có ai không
+    - có người không
+    - cho tôi hỏi
+    - tôi muốn hỏi
+    - ê
+    - ơi
 
 - intent: goodbye
   examples: |
     - bye
-    - goodbye
-    - see you
-    - see you later
-    - talk to you later
-    - catch you later
-    - gotta go
-    - bye bye
-    - have a nice day
-    - take care
-    - later
-    - peace out
+    - tạm biệt
+    - hẹn gặp lại
+    - thôi tôi đi đây
+    - cảm ơn nhé
+    - ok bye
+    - thôi nhé
+    - đi đây
+    - 88
+    - bai bai
+    - cám ơn tạm biệt
 
 # ============================================================================
-# 2. PRODUCT SEARCH & INQUIRY
+# 2. TÌM KIẾM & HỎI HÀN SẢN PHẨM
 # ============================================================================
 - intent: search_product
   examples: |
-    - I'm looking for a [laptop](product_type)
-    - Show me [running shoes](product_type)
-    - Do you have [wireless headphones](product_type)?
-    - I want to buy a [smartphone](product_type)
-    - Can I see [leather jackets](product_type)?
-    - Search for [gaming keyboard](product_type)
-    - Find me [yoga mat](product_type)
-    - I need a [backpack](product_type)
-    - Looking for [winter coat](product_type)
-    - Show me your [t-shirts](product_type)
-    - What [dresses](product_type) do you have?
-    - Any [watches](product_type) available?
-    - I want [sunglasses](product_type)
-    - Show [blue jeans](product_type)
-    - Looking for [red hoodie](product_type)
-    - Do you sell [coffee makers](product_type)?
-    - I'm interested in [ergonomic chairs](product_type)
-    - Can you show me [sports equipment](product_type)?
-    - I want to find a [jacket](product_type)
-    - i want to find a [jacket](product_type)
-    - want to find a [jacket](product_type)
-    - find a [jacket](product_type)
-    - find me a [jacket](product_type)
-    - Looking for [coat](product_type)
-    - Show me [jackets](product_type)
-    - I need a [winter jacket](product_type)
-    - Find [leather jacket](product_type)
-    - tôi muốn tìm [áo khoác](product_type)
-    - muốn tìm [áo khoác](product_type)
     - tìm [áo khoác](product_type)
-    - cho tôi xem [áo](product_type)
+    - tìm kiếm [áo khoác](product_type)
+    - tôi muốn tìm [áo khoác](product_type)
+    - cho tôi xem [áo khoác](product_type)
+    - có [áo khoác](product_type) không
+    - shop có bán [áo khoác](product_type) không
+    - xem [áo khoác](product_type)
+    - tìm [quần jean](product_type)
     - tìm [quần jeans](product_type)
-    - I want a [polo shirt](product_type)
-    - want a [polo shirt](product_type)
-    - Show me [casual wear](product_type)
-    - Looking for [shirts](product_type)
-    - find [shirts](product_type)
-    - I want [pants](product_type)
-    - want [pants](product_type)
-    - find [pants](product_type)
-    - show me [áo khoác phao nâu basic](product_name)
-    - I'm searching for [shoes](product_type)
-    - search [sneakers](product_type)
-    - got any [hoodies](product_type)
-    - looking to buy [sweater](product_type)
-    - need some [accessories](product_type)
-    - show [hats](product_type)
-    - what [bags](product_type) you got
-    - browse [jackets](product_type)
-    - tôi cần tìm [ao-khoac-nam-lightweight-windbreaker-form-regular](product_name)
-    - tìm giúp tôi [ao-thun-nam-cotton-basic](product_name)
-    - cho tôi xem [quan-jean-nam-slim-fit-den](product_name)
-    - tìm [ao-polo-nam-pique-trang](product_name)
-    - có sản phẩm [ao-so-mi-nam-tron-xanh](product_name) không
-    - tìm [giay-the-thao-nam-running](product_name)
-    - cho xem [ao-khoac-denim-nam-form-loose](product_name)
-    - tìm [quan-short-nam-the-thao](product_name)
-    - tìm sản phẩm [ao-khoac-bomber-nam-den](product_name)
-    - cho tôi [ao-hoodie-nam-trang-form-rong](product_name)
-    - xem [quan-kaki-nam-kem-basic](product_name)
-    - tìm [ao-vest-nam-xam-slim-fit](product_name)
-    - có [giay-da-nam-nau-classic](product_name) không
-    - tìm [ao-len-nam-xanh-navy-wool](product_name)
-    - cho xem [tui-deo-cheo-nam-da-den](product_name)
-    - tìm [non-luoi-trai-nam-den](product_name)
-    - xem sản phẩm [ao-thun-nu-trang-basic](product_name)
-    - tìm [vay-nu-den-dai-form-a](product_name)
-    - cho tôi xem [ao-blazer-nu-xam-regular](product_name)
-    - find [ao-khoac-gio-nam](product_name)
-    - search [quan-jogger-nam-den](product_name)
-    - show me [ao-phong-tron-trang](product_name)
-    - I need [giay-sneaker-trang-basic](product_name)
-    - looking for [ao-khoac-da-nam-nau](product_name)
-    - ao-polo-nam
-    - ao-khoac-nam-lightweight-windbreaker-form-regular
-    - quan-jean-nam-slim-fit
-    - ao-thun-nam-cotton-basic
-    - giay-the-thao-nam
-    - I'm finding [Be Bold Become Fearless](product_name)
-    - im finding [Be Bold Become Fearless](product_name)
-    - finding [Be Bold Become Fearless](product_name)
-    - search for [relaxed-fit-t-shirt: Be Bold Become Fearless](product_name)
-    - I want to find [relaxed-fit-t-shirt: Be Bold Become Fearless](product_name)
-    - show me [relaxed-fit-t-shirt: Sushi Meow](product_name)
-    - [relaxed-fit-t-shirt: Sushi Meow](product_name)
-    - [Be Bold Become Fearless](product_name)
-    - find [Sushi Meow](product_name)
-    - search [Meow](product_name)
-    - i want to search [meow](product_name)
-    - im looking for [meow](product_name)
+    - có [quần jean](product_type) không
+    - tôi cần [quần âu](product_type)
+    - show [áo sơ mi](product_type)
+    - xem [áo polo](product_type)
+    - tìm [áo thun](product_type)
+    - có [áo hoodie](product_type) không
+    - [quần kaki](product_type) có không
+    - xem [giày](product_type)
+    - tìm [giày thể thao](product_type)
+    - [áo len](product_type)
+    - tìm [áo ba lỗ](product_type)
+    - xem [quần short](product_type)
+    - có [quần jogger](product_type) không
+    - tìm [áo tank top](product_type)
+    - xem [áo vest](product_type)
+    - [áo blazer](product_type) có không
+    - show [áo bomber](product_type)
+    - tìm [áo denim](product_type)
+    - xem [giày da](product_type)
+    - có [giày lười](product_type) không
+    - [sneaker](product_type)
+    - tìm [phụ kiện](product_type)
+    - xem [túi xách](product_type)
+    - có [thắt lưng](product_type) không
+    - [nón](product_type)
+    - tìm [áo khoác da](product_name)
+    - tôi muốn mua [áo khoác bomber đen](product_name)
+    - cho xem [áo polo trắng](product_name)
+    - tìm [quần jean xanh đậm](product_name)
+    - có [áo sơ mi trắng](product_name) không
+    - [áo thun cotton đen](product_name)
+    - xem [quần kaki be](product_name)
+    - tìm [giày sneaker trắng](product_name)
+    - [áo hoodie xám](product_name)
+    - cho tôi xem [quần short kaki](product_name)
+    - tìm áo
+    - tìm quần
+    - có áo gì đẹp không
+    - có quần gì mới không
+    - sản phẩm mới
+    - hàng mới về
+    - có gì hay không
 
 - intent: ask_product_price
   examples: |
-    - How much is the [iPhone 15](product_name)?
-    - What's the price of [Nike Air Max](product_name)?
-    - Price for [MacBook Pro](product_name)?
-    - How much does [Sony WH-1000XM5](product_name) cost?
-    - What does [Canon EOS R6](product_name) cost?
-    - Tell me the price of [Samsung Galaxy S24](product_name)
-    - How expensive is [Dyson V15](product_name)?
-    - Cost of [iPad Pro](product_name)?
-    - What's [AirPods Pro](product_name) priced at?
-    - Price range for laptops
-    - How much are your smartphones?
-    - What's the cost of headphones?
-    - Price of this item
-    - How much is this?
+    - giá bao nhiêu
+    - bao nhiêu tiền
+    - giá cái này
+    - cái này giá bao nhiêu
+    - giá [áo khoác](product_name) bao nhiêu
+    - [áo polo](product_name) giá bao nhiêu
+    - cho tôi biết giá
+    - hỏi giá
+    - bao tiền
+    - giá thế nào
+    - giá của sản phẩm này
+    - giá cả ra sao
+    - giá [áo sơ mi trắng](product_name)
+    - [quần jean xanh](product_name) bao nhiêu
+    - giá [giày da nâu](product_name)
+    - cái đầu tiên giá bao nhiêu
+    - cái thứ 2 giá bao nhiêu
+    - sản phẩm số 1 giá bao nhiêu
+    - sản phẩm thứ nhất bao nhiêu tiền
+    - giá
     - price
-    - cost
-    - how much
-    - what's the price
-    - price please
-    - tell me the price
-    - how much for this
-    - what does it cost
-    - pricing info
-    - cost of this
+    - bao nhiu
+    - gia bao nhieu
 
 - intent: check_product_availability
   examples: |
-    - Is [iPhone 15 Pro](product_name) in stock?
-    - Do you have [Nike Air Force](product_name) available?
-    - Is [MacBook Air M2](product_name) available?
-    - Do you still have [Sony A7 IV](product_name)?
-    - Can I get [AirPods Max](product_name) now?
-    - Is this in stock?
-    - Do you have this item?
-    - Still available?
-    - Can I buy this?
-    - Is [blue jacket](product_name) available in [medium](size)?
-    - Do you have [size 10](size) for [running shoes](product_type)?
-    - Available in [black](color)?
-    - Any [large](size) sizes left?
-    - in stock?
-    - available?
-    - do you have it
-    - got this
-    - can I get this
-    - is it available
-    - stock check
-    - availability
-    - still in stock
-    - you have this
+    - còn hàng không
+    - còn không
+    - có sẵn không
+    - có trong kho không
+    - [áo khoác đen](product_name) còn hàng không
+    - [quần jean](product_type) size [M](size) còn không
+    - có [áo polo xanh](product_name) size [L](size) không
+    - [áo sơ mi trắng](product_name) màu [trắng](color) còn không
+    - còn size [XL](size) không
+    - size [S](size) còn hàng không
+    - màu [đen](color) còn không
+    - màu [xanh navy](color) có không
+    - sản phẩm này còn không
+    - cái này còn hàng không
+    - có bán không
+    - sẵn hàng không
+    - tình trạng hàng
+    - kiểm tra hàng
+    - check hàng
+    - cái thứ nhất còn không
+    - sản phẩm số 2 còn hàng không
 
 - intent: ask_product_details
   examples: |
-    - Tell me about [MacBook Pro](product_name)
-    - What are the specs of [iPhone 15](product_name)?
-    - Details about [Sony A7 IV](product_name)
-    - What's special about [Dyson V15](product_name)?
-    - Features of [AirPods Pro](product_name)
-    - Tell me more about this product
-    - What does this do?
-    - Product information
-    - Product description
-    - What are the features?
-    - What materials is this made of?
-    - Tell me about the quality
-    - Is this waterproof?
-    - Can you introduce one of your products?
-    - Introduce me to your products
-    - What products do you have?
-    - Tell me about your products
-    - Show me what you sell
+    - chi tiết sản phẩm
+    - cho tôi biết thông tin
+    - mô tả sản phẩm
+    - giới thiệu sản phẩm này
+    - sản phẩm này như thế nào
+    - thông tin về [áo khoác](product_name)
+    - chi tiết [quần jean](product_name)
+    - [áo polo](product_name) có gì đặc biệt
+    - nói cho tôi về sản phẩm này
+    - cái này ra sao
+    - cho biết thêm
+    - thông tin thêm
     - details
-    - more info
-    - tell me more
-    - what's this
-    - specs
-    - features
-    - info please
-    - product info
-    - describe this
-    - What can I buy here?
-    - Recommend me a product
-    - What do you recommend?
-    - Suggest something
-    - What's popular?
-    - What's your best product?
-    - giới thiệu sản phẩm
+    - info
+    - giới thiệu
     - có sản phẩm gì
     - bán gì
-    - The first one
-    - The second one
-    - The third one
-    - Number 1
-    - Number 2
-    - Number 3
-    - Show me the first product
-    - Tell me about the first one
-    - What about the second one?
-    - I want to know about number 1
-    - Cái đầu tiên
-    - Cái thứ hai
-    - Cái thứ 2
-    - Cái thứ 3
-    - Số 1
-    - Số 2
-    - Cái đầu tiên giá bao nhiêu?
-    - Cái thứ 2 còn hàng không?
-    - Cho tôi xem cái đầu
-    - Cái màu xanh
-    - Cái màu đỏ
-    - The blue one
-    - The red one
-    - The one on top
-    - First product
-    - Second product
+    - sản phẩm của shop
+    - cái đầu tiên thế nào
+    - cho tôi xem cái thứ 2
+    - số 1
+    - số 2  
+    - số 3
+    - cái đầu
+    - cái thứ hai
+    - cái thứ ba
 
 # ============================================================================
-# 2.5 CART & PURCHASE
+# 2.5 GIỎ HÀNG & MUA SẮM
 # ============================================================================
 - intent: add_to_cart
   examples: |
-    - Add this to cart
-    - I want to buy this
-    - Put this in my cart
-    - Add to cart
-    - I'll take this one
-    - Add this product
-    - Buy this
-    - Purchase this
-    - I want this
-    - Can I add this to my cart?
-    - Add size [M](size) to cart
-    - I want size [L](size)
-    - Add [XL](size) please
-    - I want the [blue](color) one
-    - Add the [red](color) version
-    - Put [2](quantity) in cart
-    - I want [3](quantity) of these
-    - Add this in size [M](size) and color [black](color)
-    - Thêm vào giỏ hàng
-    - Cho vào giỏ
-    - Mua cái này
-    - Tôi muốn mua
-    - Cho tôi size [M](size)
-    - Thêm màu [đỏ](color)
-    - Cho [2](quantity) cái
-    - Add the first one to cart
-    - Add the second one
-    - I'll take number 1
-    - Put the first product in my cart
-    - Add number 2 to cart
-    - Thêm cái đầu tiên vào giỏ
-    - Cho cái thứ 2 vào giỏ
-    - Mua cái số 1
+    - thêm vào giỏ
+    - thêm vào giỏ hàng
+    - cho vào giỏ
+    - thêm giỏ
+    - thêm vào
+    - tôi muốn mua
+    - tôi mua cái này
+    - lấy cái này
+    - đặt mua
+    - mua
+    - order
+    - buy
+    - add to cart
+    - thêm size [M](size)
+    - cho vào giỏ size [L](size)
+    - thêm màu [đen](color)
+    - tôi muốn màu [trắng](color)
+    - thêm [2](quantity) cái
+    - cho [3](quantity) cái vào giỏ
+    - thêm size [M](size) màu [đen](color)
+    - cho size [L](size) màu [xanh](color) vào giỏ
+    - mua [2](quantity) cái size [M](size)
+    - thêm cái đầu tiên
+    - cho cái thứ 2 vào giỏ
+    - mua số 1
+    - lấy sản phẩm thứ nhất
 
 - intent: view_cart
   examples: |
-    - Show my cart
-    - What's in my cart?
-    - View cart
-    - Check cart
-    - My cart
-    - Cart
-    - Show cart
-    - What did I add?
-    - Show my items
-    - What's in my basket?
-    - Xem giỏ hàng
-    - Giỏ hàng của tôi
-    - Cho xem giỏ
-    - Check giỏ
+    - xem giỏ hàng
+    - giỏ hàng của tôi
+    - xem giỏ
+    - kiểm tra giỏ hàng
+    - giỏ của tôi
+    - trong giỏ có gì
+    - tôi đã mua gì
+    - cho xem giỏ
+    - check giỏ
+    - xem đơn hàng tạm
 
 - intent: remove_from_cart
   examples: |
-    - Remove from cart
-    - Delete this item
-    - Remove this
-    - Take this out
-    - Remove item
-    - Delete from cart
-    - Xóa khỏi giỏ
-    - Bỏ ra
-    - Xóa sản phẩm này
+    - xóa khỏi giỏ
+    - bỏ ra khỏi giỏ
+    - xóa sản phẩm này
+    - xóa khỏi giỏ hàng
+    - không lấy cái này
+    - hủy sản phẩm này
+    - bỏ ra
 
 # ============================================================================
-# 3. ORDER TRACKING & MANAGEMENT
+# 3. THEO DÕI & QUẢN LÝ ĐỠN HÀNG
 # ============================================================================
 - intent: track_order
   examples: |
-    - Where is my order?
-    - Track my order [#12345](order_number)
-    - Order status for [#67890](order_number)
-    - Can you check order [#54321](order_number)?
-    - What's the status of my order?
-    - When will my order arrive?
-    - Has my order shipped?
-    - Where is order [#11111](order_number)?
-    - Track order number [#99999](order_number)
-    - I want to know about my order
-    - Check my recent order
-    - What's happening with my order?
-    - Order tracking
-    - Delivery status
-    - Shipping update
-    - Can I view my order?
-    - Can I view my order
-    - view my order
-    - I want to view my order
-    - Let me view my order
-    - Show me my order
-    - see my order
-    - I'd like to see my order
-    - Can I see my order?
-    - view order
-    - see order
-    - show my orders
-    - view my orders
-    - list my orders
-    - I want to see my orders
-    - show me all my orders
-    - what orders do I have?
-    - do I have any orders?
-    - my order history
-    - view order history
-    - show order list
-    - list of my orders
-    - all my orders
-    - help me check the order ID [1](order_number)
-    - check order ID [2](order_number)
-    - track order ID [123](order_number)
-    - order ID [456](order_number)
-    - check the status of order [789](order_number)
-    - help me track order [100](order_number)
-    - I want to check order [555](order_number)
-    - can you help me check order [999](order_number)
-    - help with order [12](order_number)
-    - order [34](order_number) status
-    - status for order [56](order_number)
-    - where's order [78](order_number)
-    - track [90](order_number)
-    - check [111](order_number)
-    - order number [222](order_number)
-    - help me with order ID [333](order_number)
-    - I need to track [444](order_number)
-    - what's the status of [666](order_number)
-    - check order [777](order_number) please
-    - help me check order [888](order_number)
-    - my order number is [0933613058](order_number)
-    - order number is [0912345678](order_number)
-    - the order number is [0987654321](order_number)
+    - đơn hàng của tôi đâu
+    - kiểm tra đơn hàng
+    - tra đơn hàng
+    - tra cứu đơn hàng
+    - xem đơn hàng
+    - check đơn hàng
+    - theo dõi đơn hàng
+    - tình trạng đơn hàng
+    - đơn hàng [#12345](order_number)
+    - đơn [0000000032](order_number) đang ở đâu
+    - kiểm tra đơn [123](order_number)
+    - tra đơn số [456](order_number)
+    - đơn hàng của tôi
+    - đơn của tôi
+    - tôi muốn xem đơn hàng
+    - cho tôi xem đơn
+    - xem đơn
+    - có đơn hàng nào không
+    - tôi có đơn gì
+    - danh sách đơn hàng
+    - lịch sử đơn hàng
+    - các đơn hàng của tôi
+    - order của tôi
+    - kiểm tra order [789](order_number)
+    - tra order [111](order_number)
+    - đơn số [222](order_number)
+    - mã đơn [333](order_number)
+    - [444](order_number)
     - [0933613058](order_number)
     - [0912345678](order_number)
-    - [0987654321](order_number)
-    - track [0933613058](order_number)
-    - check [0912345678](order_number)
-    - order [0987654321](order_number)
-    - my order is [1234567890](order_number)
-    - order number [9876543210](order_number)
-    - can you check [0933613058](order_number)
-    - please track [0912345678](order_number)
+    - đơn hàng [0987654321](order_number)
 
 - intent: check_delivery_status
   examples: |
-    - when will I receive my order?
-    - when will my order arrive?
-    - when can I expect my order?
-    - delivery date for order [0000000032](order_number)
-    - estimated delivery time
-    - how long until my order arrives?
-    - where is my order?
-    - when is my package coming?
-    - delivery status
-    - track my delivery
-    - shipping information
-    - when will it be delivered?
-    - expected delivery date
-    - arrival time
-    - when should I expect my package?
-    - delivery estimate
-    - how many days until delivery?
-    - when will this arrive?
-    - check delivery status for [0000000001](order_number)
-    - my order [0000000032](order_number) delivery date
-    - order [0000000015](order_number) when will it arrive?
-    - when will order [0000000025](order_number) be delivered?
-    - delivery information for [0000000050](order_number)
-    - estimated delivery for order [0000000100](order_number)
-    - when is [0000000032](order_number) arriving?
-    - how long for order [0000000001](order_number)?
-    - delivery time for [0000000015](order_number)
-    - when does order [0000000025](order_number) arrive?
-    - what's the delivery date?
-    - when will I get my package?
-    - delivery tracking
-    - when arrives?
-    - shipping date
-    - expected arrival
-    - how long will delivery take?
-    - when can I expect delivery?
-    - what's the estimated delivery?
-    - when will you deliver my order?
-    - delivery timeframe
-    - how soon will it arrive?
-    - when should it arrive?
-    - arrival date
-    - when will I receive it?
-    - expected delivery for my order
-    - when does it arrive?
-    - delivery schedule
-    - how many days for delivery?
-    - when is the delivery?
-    - can you tell me when my order will arrive?
-    - I need to know the delivery date
-    - what's my delivery status?
-    - check when my order arrives
+    - khi nào nhận được hàng
+    - bao giờ giao hàng
+    - bao giờ có hàng
+    - khi nào ship
+    - dự kiến giao hàng
+    - thời gian giao hàng
+    - hàng đến khi nào
+    - ship bao lâu
+    - mất bao lâu
+    - giao trong bao lâu
+    - đơn [0000000032](order_number) khi nào đến
+    - đơn [123](order_number) giao khi nào
+    - thời gian giao đơn [456](order_number)
+    - bao giờ nhận được đơn [789](order_number)
+    - ngày giao hàng
+    - ước tính giao hàng
+    - giao hàng mất bao lâu
+    - ship mất mấy ngày
+    - tình trạng giao hàng
+    - đơn đang ở đâu
+    - shipper đang ở đâu
 
 - intent: cancel_order
   examples: |
-    - I want to cancel order [0000000032](order_number)
-    - Cancel my order
-    - Can I cancel order [0000000015](order_number)?
-    - I need to cancel my recent order
-    - Stop my order
-    - Cancel this purchase
-    - I don't want this order anymore
-    - How do I cancel an order?
-    - Can you help me cancel order [0000000050](order_number)?
-    - please cancel my order
-    - I'd like to cancel order [0000000001](order_number)
-    - can you cancel this order for me?
-    - cancel order [0000000025](order_number) please
-    - I want to cancel [0000000100](order_number)
-    - help me cancel my purchase
-    - stop order [0000000032](order_number)
-    - I need to cancel order number [0000000045](order_number)
-    - can I still cancel my order?
-    - is it possible to cancel order [0000000020](order_number)?
-    - I'd like to stop my order [0000000010](order_number)
-    - cancel [0000000033](order_number)
-    - I want to cancel order [0000000044](order_number) I changed my mind
-    - cancel order [0000000055](order_number) because I ordered the wrong item
-    - I need to cancel [0000000066](order_number) wrong size
-    - cancel my order [0000000077](order_number) I ordered wrong color
-    - I want to cancel order [0000000088](order_number) found a better price
-    - cancel [0000000099](order_number) delivery is too slow
-    - I need to cancel order [0000000011](order_number) payment issue
-    - cancel order [0000000022](order_number) duplicate order
-    - I changed my mind about order [0000000034](order_number)
-    - I ordered the wrong item on order [0000000045](order_number)
-    - wrong size for order [0000000056](order_number)
-    - I want to cancel because wrong color
-    - cancel my order I found it cheaper elsewhere
-    - the delivery takes too long cancel my order
-    - I can't pay for this order cancel it
-    - I accidentally ordered twice cancel order [0000000067](order_number)
-    - cancel order [0000000078](order_number) don't want it anymore
-    - I need to cancel my order changed my mind
-    - cancel because I ordered wrong product
-    - stop my order wrong size color
+    - hủy đơn hàng
+    - tôi muốn hủy đơn
+    - hủy đơn
+    - cancel đơn hàng
+    - hủy order
+    - không muốn mua nữa
+    - hủy đơn [0000000032](order_number)
+    - tôi muốn hủy đơn [123](order_number)
+    - cancel order [456](order_number)
+    - hủy đơn số [789](order_number)
+    - không lấy đơn này
+    - không muốn đơn hàng này
+    - làm sao để hủy đơn
+    - hủy giúp tôi đơn [111](order_number)
+    - tôi đổi ý rồi hủy đơn [222](order_number)
+    - hủy đơn [333](order_number) tôi đặt nhầm
+    - sai size hủy đơn [444](order_number)
+    - hủy đơn [555](order_number) sai màu
+    - tìm được giá rẻ hơn hủy đơn [666](order_number)
+    - giao lâu quá hủy đơn [777](order_number)
+    - có vấn đề thanh toán hủy đơn [888](order_number)
+    - đặt trùng hủy đơn [999](order_number)
 
 - intent: modify_order
   examples: |
-    - I want to change my order
-    - Can I modify order [#12345](order_number)?
-    - Change delivery address
-    - Update my order
-    - I need to add items to my order
-    - Remove item from order [#67890](order_number)
-    - Can I change the size?
-    - Modify shipping address
+    - sửa đơn hàng
+    - thay đổi đơn hàng
+    - đổi địa chỉ giao hàng
+    - sửa địa chỉ
+    - thay đổi số điện thoại
+    - đổi sản phẩm trong đơn
+    - thêm sản phẩm vào đơn [12345](order_number)
+    - bớt sản phẩm trong đơn
+    - đổi size trong đơn
 
 # ============================================================================
-# 4. POLICIES & FAQ
+# 4. CHÍNH SÁCH & FAQ
 # ============================================================================
 - intent: ask_shipping_policy
   examples: |
-    - What's your shipping policy?
-    - How long does shipping take?
-    - Do you ship internationally?
-    - Shipping costs?
-    - Free shipping?
-    - How much is delivery?
-    - When will I receive my order?
-    - Delivery time
-    - Shipping information
-    - Do you offer express shipping?
-    - How fast is shipping?
-    - What are the delivery times?
-    - Do you deliver to my country?
-    - Is shipping free?
-    - How much does shipping cost?
-    - Tell me about shipping
-    - Shipping details
-    - Delivery information
-    - How long for delivery?
-    - When will it arrive?
-    - Do you have fast delivery?
-    - International shipping available?
-    - Shipping to Vietnam?
-    - How long to ship to Hanoi?
-    - Delivery to HCMC?
-    - Express delivery options?
+    - chính sách vận chuyển
+    - phí ship
+    - ship mất bao lâu
+    - có freeship không
+    - miễn phí vận chuyển không
+    - giao hàng như thế nào
+    - ship toàn quốc không
+    - có ship nhanh không
+    - có giao hàng hỏa tốc không
+    - thời gian giao hàng
+    - ship ra nước ngoài không
+    - vận chuyển quốc tế
+    - giao hàng Hà Nội mất bao lâu
+    - ship Sài Gòn mất mấy ngày
+    - giao hàng Đà Nẵng
+    - ship tỉnh
+    - phí vận chuyển
+    - giá ship
+    - chi phí giao hàng
+    - thông tin vận chuyển
 
 - intent: ask_return_policy
   examples: |
-    - What's your return policy?
-    - Can I return this?
-    - How do I return an item?
-    - Return process
-    - Exchange policy
-    - Refund policy
-    - Can I get a refund?
-    - How long do I have to return?
-    - What's the exchange process?
-    - Return window
-    - Tell me about returns
-    - How to return a product?
-    - Can I get my money back?
-    - Refund information
-    - Return information
-    - What if I don't like it?
-    - Can I exchange this?
-    - How many days to return?
-    - Return time limit?
-    - Refund process
-    - Do you accept returns?
-    - Return conditions
-    - Can I send it back?
-    - Return and exchange
-    - How do refunds work?
-    - Refund timeline
+    - chính sách đổi trả
+    - có đổi hàng không
+    - đổi trả như thế nào
+    - trả hàng được không
+    - hoàn tiền không
+    - đổi size được không
+    - đổi màu được không
+    - đổi sản phẩm khác được không
+    - bao lâu được đổi trả
+    - trong bao nhiêu ngày đổi được
+    - 30 ngày đổi trả
+    - điều kiện đổi trả
+    - quy định đổi hàng
+    - làm sao để đổi
+    - hoàn tiền mất bao lâu
+    - có hoàn 100% không
+    - đổi trả có mất phí không
 
 - intent: ask_payment_methods
   examples: |
-    - What payment methods do you accept?
-    - Can I pay with PayPal?
-    - Do you accept credit cards?
-    - Payment options
-    - How can I pay?
-    - Do you take debit cards?
-    - Can I pay on delivery?
-    - Payment methods available
-    - Cash on delivery?
-    - What are the payment options?
-    - How do I pay?
-    - Can I use credit card?
-    - Do you accept Visa?
-    - Do you accept Mastercard?
-    - Payment methods
-    - Can I pay with card?
-    - Do you have COD?
-    - Cash on delivery available?
-    - Can I pay later?
-    - VNPay accepted?
-    - Do you take VNPay?
-    - What payment do you accept?
-    - How to pay for order?
-    - Payment information
-    - Can I pay cash?
-    - Do you accept PayPal?
+    - thanh toán thế nào
+    - phương thức thanh toán
+    - trả tiền như thế nào
+    - có COD không
+    - có nhận tiền mặt không
+    - thanh toán khi nhận hàng
+    - chấp nhận thẻ không
+    - thanh toán thẻ
+    - có VNPay không
+    - có MoMo không
+    - có ZaloPay không
+    - thanh toán online
+    - thanh toán chuyển khoản
+    - chuyển khoản ngân hàng
+    - các hình thức thanh toán
+    - thanh toán bằng gì
 
 - intent: ask_warranty
   examples: |
-    - Do you offer warranty?
-    - What's the warranty policy?
-    - How long is the warranty?
-    - Warranty information
-    - Product guarantee
-    - Is this covered by warranty?
-    - What does the warranty cover?
+    - có bảo hành không
+    - chính sách bảo hành
+    - bảo hành bao lâu
+    - bảo hành như thế nào
+    - thời gian bảo hành
+    - sản phẩm có được bảo hành không
+    - bảo hành gồm những gì
 
 # ============================================================================
-# 5. RECOMMENDATIONS & COMPARISONS
+# 5. TƯ VẤN & SO SÁNH
 # ============================================================================
 - intent: ask_recommendation
   examples: |
-    - Can you recommend something?
-    - What do you suggest?
-    - Recommend a product
-    - What should I buy?
-    - Best product for gaming
-    - Top rated items
-    - Show me bestsellers
-    - Bestsellers
-    - Customer favorites
-    - Most popular products
-    - Top picks
-    - What's trending?
-    - Trending items
-    - What do you suggest for [photography](category)?
+    - gợi ý sản phẩm
+    - tư vấn cho tôi
+    - nên mua gì
+    - có gì đẹp không
+    - có gì hay không
+    - gợi ý đi
+    - recommend
+    - sản phẩm bán chạy
+    - sản phẩm hot
+    - bestseller
+    - mua nhiều nhất
+    - được yêu thích nhất
+    - trending
+    - có gì mới
 
 - intent: compare_products
   examples: |
-    - Compare [iPhone 15](product_name) and [Samsung S24](product_name)
-    - What's the difference between [MacBook Air](product_name) and [MacBook Pro](product_name)?
-    - [Nike](brand) vs [Adidas](brand) running shoes
-    - Which is better: [Sony A7](product_name) or [Canon R6](product_name)?
-    - Compare these two products
-    - What's the difference?
-    - Which one should I choose?
-    - Pros and cons
+    - so sánh [áo khoác bomber](product_name) và [áo khoác denim](product_name)
+    - khác nhau gì giữa [áo polo](product_name) và [áo sơ mi](product_name)
+    - [quần jean](product_type) và [quần kaki](product_type) khác gì
+    - nên chọn cái nào
+    - so sánh 2 cái này
+    - cái nào tốt hơn
+    - khác gì nhau
+    - ưu nhược điểm
 
 # ============================================================================
-# 6. ACCOUNT & SUPPORT
+# 6. HỖ TRỢ KHÁCH HÀNG
 # ============================================================================
 - intent: create_support_ticket
   examples: |
-    - I need help
-    - Talk to a human
-    - Connect me with support
-    - I have a problem
-    - I want to speak to customer service
-    - Can I talk to someone?
-    - Human support please
-    - I need assistance
-    - Help me with this issue
-    - Contact support
-    - Report a problem
-    - I have a complaint
+    - tôi cần hỗ trợ
+    - cần giúp đỡ
+    - giúp tôi với
+    - có vấn đề
+    - gặp lỗi
+    - kết nối nhân viên
+    - nói chuyện với người thật
+    - muốn gặp tư vấn viên
+    - chuyển nhân viên
+    - tôi muốn khiếu nại
+    - không hài lòng
+    - báo cáo vấn đề
 
 - intent: ask_contact_info
   examples: |
-    - How can I contact you?
-    - What's your phone number?
-    - Email address?
-    - Contact information
-    - How to reach customer service?
-    - Support contact
-    - Your address?
-    - Store location
-    - Where are you located?
+    - liên hệ như thế nào
+    - số điện thoại shop
+    - email của shop
+    - địa chỉ cửa hàng
+    - shop ở đâu
+    - cửa hàng ở đâu
+    - thông tin liên hệ
+    - hotline
+    - fanpage
+    - facebook shop
 
 # ============================================================================
-# 7. CHITCHAT & OUT OF SCOPE
+# 7. CHITCHAT
 # ============================================================================
 - intent: bot_challenge
   examples: |
-    - Are you a bot?
-    - Are you human?
-    - Am I talking to a bot?
-    - Are you real?
-    - Who are you?
-    - What are you?
-    - Are you AI?
+    - bạn là ai
+    - bạn là bot à
+    - bạn là người không
+    - bạn là AI à
+    - bạn thật không
+    - tôi đang nói chuyện với bot à
 
 - intent: thank_you
   examples: |
-    - thanks
-    - thank you
-    - thx
-    - thank you so much
-    - thanks a lot
-    - appreciate it
-    - thanks for your help
-    - thank you for helping me
-    - much appreciated
-    - thanks!
-    - thank u
-    - ty
-    - tks
     - cảm ơn
     - cám ơn
-    - thanks bạn
-    - ok thanks
-    - great thanks
-    - perfect thanks
+    - thanks
+    - thank you
+    - cảm ơn bạn
+    - cám ơn nhiều
+    - thanks nhiều
+    - cảm ơn nhé
+    - ok cảm ơn
+    - được rồi cảm ơn
+    - tuyệt cảm ơn
 
 - intent: affirm
   examples: |
     - yes
-    - yeah
-    - yep
-    - sure
-    - of course
-    - that's right
-    - correct
-    - absolutely
-    - definitely
+    - có
+    - được
     - ok
     - okay
-    - sounds good
+    - ừ
+    - đúng
+    - đồng ý
+    - chắc chắn
+    - tất nhiên
+    - oke
+    - okie
+    - dc
+    - đc
 
 - intent: deny
   examples: |
     - no
-    - nope
-    - never
-    - not really
-    - no thanks
-    - don't want it
-    - I don't think so
-    - no way
-    - nah
+    - không
+    - không cần
+    - thôi
+    - không phải
+    - không muốn
+    - chưa
+    - ko
+    - k
+    - khong
 
 # ============================================================================
-# 8. FASHION E-COMMERCE INTENTS (NEW)
+# 8. THỜI TRANG NAM - CHI TIẾT
 # ============================================================================
 
 - intent: ask_size_guide
   examples: |
-    - size chart
     - bảng size
-    - làm sao biết size của mình
-    - tôi cao 1m75 nặng 70kg nên mặc size gì
-    - cách đo size áo
-    - size M ứng với chiều cao bao nhiêu
-    - tôi nên chọn size nào
-    - có bảng quy đổi size không
-    - size Việt Nam khác size Âu thế nào
     - hướng dẫn chọn size
-    - tư vấn size
+    - tôi cao [1m75](height) nặng [70kg](weight) nên mặc size gì
+    - size M ứng với chiều cao bao nhiêu
+    - làm sao biết size của mình
+    - cách đo size
     - size nào vừa
-    - how to choose size
-    - size guide
+    - tư vấn size
+    - quy đổi size
+    - size Việt Nam và size Âu
+    - size chart
+    - tôi nên chọn size gì
 
 - intent: ask_material
   examples: |
-    - áo này làm từ chất liệu gì
+    - chất liệu gì
+    - làm từ vải gì
+    - cotton hay polyester
     - vải có dày không
     - có co giãn không
+    - vải thoáng mát không
     - chất vải thế nào
-    - cotton hay polyester
-    - có thoáng mát không
-    - vải có nhăn không
+    - có nhăn không
     - có phai màu không
     - giặt có ra màu không
-    - chất liệu gì
-    - fabric material
-    - what material
-    - cotton or polyester
+    - chất lượng vải
 
 - intent: ask_available_colors
   examples: |
     - có màu gì
     - màu nào còn hàng
-    - có màu đen không
-    - sản phẩm này có bao nhiêu màu
+    - có mấy màu
+    - màu đen còn không
+    - màu trắng có không
     - các màu available
-    - màu trắng có size M không
-    - còn màu nào
-    - show colors
-    - available colors
-    - what colors do you have
+    - show màu
+    - màu sắc
+    - có màu xanh navy không
 
 - intent: ask_promotions
   examples: |
-    - có khuyến mãi gì không
+    - có khuyến mãi không
     - đang giảm giá không
-    - có voucher không
+    - có sale không
     - mã giảm giá
-    - sale bao nhiêu phần trăm
-    - có ưu đãi cho thành viên mới không
+    - voucher
+    - có ưu đãi gì không
     - freeship từ bao nhiêu
-    - có combo giảm giá không
-    - promotion code
-    - discount
-    - any sale
-    - coupon code
+    - giảm bao nhiêu
+    - combo giảm giá
+    - promotion
+    - discount code
+    - coupon
 
 - intent: ask_delivery_time
   examples: |
-    - bao lâu thì nhận được hàng
-    - ship trong bao lâu
-    - giao hàng mất mấy ngày
-    - khi nào có hàng
-    - đặt hôm nay bao giờ đến
-    - giao nhanh trong ngày được không
-    - thời gian giao hàng
-    - delivery time
-    - how long to ship
-    - when will I receive
+    - giao hàng mất bao lâu
+    - mấy ngày có hàng
+    - thời gian nhận hàng
+    - khi nào nhận được
+    - ship mất mấy ngày
+    - giao nhanh không
+    - có giao hỏa tốc không
 
 - intent: ask_fit_style
   examples: |
-    - áo này form rộng hay ôm
+    - dáng áo thế nào
+    - form áo ra sao
+    - regular fit là gì
+    - slim fit hay oversize
+    - có ôm không
+    - có rộng không
     - fit như thế nào
-    - mặc có rộng không
-    - form dáng regular hay slim
-    - có phải oversize không
-    - áo này fit người gầy được không
-    - form áo có vừa người to không
-    - regular fit hay slim fit
-    - is it oversized
-    - how does it fit
+    - dáng vừa không
+    - body fit
 
 - intent: ask_styling_advice
   examples: |
-    - phối áo này với quần gì
-    - nên kết hợp với item nào
-    - mặc áo này đi đâu phù hợp
-    - outfit với áo này
-    - phối đồ thế nào cho đẹp
-    - áo này match với giày gì
-    - tư vấn cách phối đồ
-    - styling advice
-    - how to style this
-    - what to wear with this
+    - phối đồ thế nào
+    - mặc với gì đẹp
+    - nên kết hợp với gì
+    - mix đồ ra sao
+    - gợi ý outfit
+    - tư vấn phối đồ
+    - mặc cái này với cái gì
+    - styling
+    - cách phối
 
 - intent: search_by_occasion
   examples: |
-    - áo đi làm
-    - quần đi chơi
-    - outfit dạo phố
-    - đồ đi date
-    - trang phục đi du lịch
-    - mặc đi gym
-    - đồ mùa hè
-    - áo mặc trong nhà
-    - work outfit
+    - đi làm mặc gì
+    - đồ công sở
+    - trang phục dự tiệc
+    - đi chơi mặc gì
+    - đồ đi hẹn hò
+    - mặc đi du lịch
     - casual wear
-    - party clothes
-
-- intent: compare_product_details
-  examples: |
-    - khác nhau giữa áo A và áo B là gì
-    - áo polo và áo thun khác gì nhau
-    - nên mua cái nào
-    - sản phẩm nào tốt hơn
-    - so sánh giá và chất lượng
-    - khác biệt giữa 2 mẫu này
-    - compare products
-    - difference between
-    - which one is better
+    - smart casual
+    - formal wear
+    - đồ dạo phố
 
 - intent: ask_reviews
   examples: |
-    - có ai review sản phẩm này chưa
     - đánh giá thế nào
+    - review
     - người ta nói gì về sản phẩm này
-    - có đáng mua không
-    - chất lượng có tốt không
-    - mọi người mặc thấy sao
-    - customer reviews
-    - product reviews
-    - is it worth buying
+    - có tốt không
+    - chất lượng ra sao
+    - khách hàng đánh giá
+    - rating
+    - feedback
 
-# ============================================================================
-# 9. ADVANCED E-COMMERCE INTENTS (NEW)
-# ============================================================================
 - intent: ask_sizing_advice
   examples: |
-    - How does the sizing run for your [Vintage Wash](product_name) jeans? I'm usually a [US 8](reference_size), but I have [wide hips](body_type).
-    - Form quần [Vintage Wash](product_name) thế nào? Tôi hay mặc size [US 8](reference_size) nhưng [hông to](body_type).
-    - Should I size up on the [Classic](product_name) t-shirt? I want a [looser fit](fit_preference).
-    - Tôi nên mặc size nào cho áo [Classic](product_name)? Tôi muốn mặc [form rộng](fit_preference).
-    - Tôi cao [1m75](height) nặng [70kg](weight), với áo [polo basic](product_name) thì nên chọn size gì?
-    - Với dáng người [gầy](body_type) cao [1m68](height) nặng [58kg](weight) thì nên chọn size nào cho quần [slim fit chinos](product_name)?
+    - tôi cao [1m70](height) nặng [65kg](weight) mặc size gì
+    - tư vấn size cho tôi
+    - size nào phù hợp với tôi
+    - tôi [60kg](weight) [1m68](height) nên mặc size gì
+    - người gầy mặc size gì
+    - người mập nên chọn size nào
+    - vóc dáng [nhỏ](body_type) mặc size gì
 
 - intent: ask_product_care
   examples: |
-    - Is this [cotton t-shirt](product_name) [pre-shrunk](care_property), or will it [shrink in the wash](care_property)?
-    - Áo thun [cotton](product_name) này đã [xử lý co rút](care_property) chưa, hay sẽ [bị co lại khi giặt](care_property)?
-    - How do I care for this [wool sweater](product_name) to make sure it doesn't [lose its shape](care_property)?
-    - Tôi nên bảo quản [áo len](product_name) này thế nào để không bị [mất form](care_property)?
-    - Hướng dẫn giặt và bảo quản [áo khoác dạ](product_name) với?
+    - cách giặt
+    - bảo quản thế nào
+    - giặt máy được không
+    - có cần giặt tay không
+    - là ủi thế nào
+    - cách chăm sóc sản phẩm
+    - hướng dẫn giặt là
+    - có co rút không
 
 - intent: report_order_error
   examples: |
-    - My order [#123-ABC](order_number) just came, but the [black belt](product_name) is [missing](error_type).
-    - Đơn hàng [#123-ABC](order_number) của tôi vừa đến nhưng bị [thiếu](error_type) cái [thắt lưng đen](product_name).
-    - You sent me [two](quantity) of the same [white shirt](product_name), but I only ordered [one](quantity).
-    - Bạn gửi tôi [2](quantity) cái [áo sơ mi trắng](product_name) nhưng tôi chỉ đặt [1](quantity) cái.
-    - Đơn [#456789](order_number) bị [giao thiếu](error_type) hàng.
+    - đơn hàng bị sai
+    - giao sai hàng
+    - không đúng đơn
+    - thiếu hàng
+    - hàng bị lỗi
+    - báo lỗi đơn hàng
+    - có vấn đề với đơn hàng
 
 - intent: request_exchange_item
   examples: |
-    - The large t-shirt in order [#456](order_number) fits great, but the [beige chinos](product_to_return) are the [wrong color](reason). Can I exchange just the pants for the [light grey](product_to_get) one?
-    - Áo thun size L trong đơn [#456](order_number) vừa, nhưng quần [chinos màu be](product_to_return) bị [sai màu](reason). Tôi có thể đổi sang màu [xám nhạt](product_to_get) không?
-    - Tôi muốn đổi cái quần trong đơn [#789](order_number) sang size khác.
+    - đổi size
+    - đổi màu
+    - muốn đổi sản phẩm khác
+    - đổi sang mẫu khác
+    - có thể đổi không
+    - yêu cầu đổi hàng
 
 - intent: report_quality_issue
   examples: |
-    - I've worn these [sneakers](product_name) maybe five times and the [sole is already peeling](defect_description).
-    - Tôi mới mang đôi [giày này](product_name) vài lần mà [đế đã bị bung keo](defect_description).
-    - This is poor quality. Is this covered under your [warranty](policy_type) or considered [normal wear and tear](policy_type)?
-    - Chất lượng tệ quá. Cái này có được [bảo hành](policy_type) không hay tính là [hao mòn thông thường](policy_type)?
+    - chất lượng không tốt
+    - sản phẩm bị lỗi
+    - hàng kém
+    - không giống mô tả
+    - khác hình
+    - bị rách
+    - bị phai màu
+    - báo cáo chất lượng
 
 - intent: request_policy_exception
   examples: |
-    - I know the [dress](product_name) I bought was [Final Sale](policy_type), but it arrived with a [defective zipper](reason). Can I get a refund?
-    - Tôi biết cái [đầm](product_name) đó là [hàng giảm giá không đổi trả](policy_type), nhưng nó bị [lỗi dây kéo](reason). Tôi hoàn tiền được không?
-    - Bình thường hàng [final sale](policy_type) không đổi trả, nhưng sản phẩm của tôi bị [lỗi](reason). Shop hỗ trợ ngoại lệ được không?
+    - có thể ngoại lệ không
+    - trường hợp đặc biệt
+    - làm ơn giúp tôi
+    - có thể linh hoạt không
+    - xin phép ngoại lệ
 
 - intent: request_stock_notification_conditional
   examples: |
-    - Can you notify me if the [navy bomber jacket](product_name) in [Medium](size) is restocked, but only if it goes on sale for [under $50](price_condition)?
-    - Báo tôi khi áo khoác [bomber xanh navy](product_name) size [M](size) có hàng lại, nhưng chỉ khi nó giảm giá [dưới 1 triệu](price_condition) thôi nhé.
-    - Nếu quần [jeans slim fit](product_name) size [32](size) về lại và giá [dưới 700k](price_condition) thì báo tôi.
+    - báo khi có hàng
+    - thông báo khi về hàng
+    - có hàng báo tôi nhé
+    - nhắc tôi khi có size [M](size)
+    - notify khi restock
 
 - intent: check_discount_logic
   examples: |
-    - Can I use both the [SALE30](discount_code) code and my [NEW10](discount_code) welcome code on the same order?
-    - Tôi dùng cả mã [SALE30](discount_code) và mã chào mừng [NEW10](discount_code) cho cùng một đơn được không?
-    - Why isn't my [SAVEBIG](discount_code) code working on the [leather shoes](product_name)?
-    - Sao mã [SAVEBIG](discount_code) không áp dụng được cho đôi [giày da](product_name)?
+    - giảm giá bao nhiêu
+    - tính giảm thế nào
+    - áp dụng mã giảm giá
+    - discount như thế nào
+    - tổng tiền sau giảm
 
 - intent: ask_product_comparison_contextual
   examples: |
-    - Compare the [Oversized hoodie](product_name) and the [Relaxed Fit hoodie](product_name) for someone who is [short](context).
-    - So sánh áo hoodie [Oversized](product_name) và [Relaxed Fit](product_name) cho người [thấp](context).
-    - Which is better for someone with [broad shoulders](context), the [regular fit shirt](product_name) or the [slim fit shirt](product_name)?
+    - khác gì nhau
+    - so sánh 2 cái
+    - cái nào tốt hơn
+    - nên chọn cái nào
+    - sự khác biệt
 
 # ============================================================================
-# 9. OPEN-ENDED QUERIES (Gemini AI)
+# 9. GEMINI AI - CÂU HỎI MỞ RỘNG
 # ============================================================================
 - intent: open_ended_query
   examples: |
-    - What's trending in fashion right now?
-    - How do I style a denim jacket?
-    - What colors go well with navy blue?
-    - Tell me about streetwear fashion
-    - What's the difference between slim fit and regular fit?
-    - How should I dress for a job interview?
-    - What are the latest fashion trends?
-    - Can you explain capsule wardrobe?
-    - What's business casual?
-    - Tell me about sustainable fashion
-    - What are the essential wardrobe pieces?
-    - How to dress for my body type?
-    - Xu hướng thời trang hiện nay là gì?
-    - Tôi nên phối áo khoác denim như thế nào?
-    - Màu gì hợp với màu xanh navy?
-    - Nói cho tôi về phong cách streetwear
-    - Khác biệt giữa slim fit và regular fit là gì?
+    - phong cách thời trang là gì
+    - xu hướng thời trang 2024
+    - cách ăn mặc đẹp
+    - làm sao để lịch lãm
+    - bí quyết phối đồ
+    - thời trang nam công sở
+    - street style là gì
+    - smart casual nghĩa là gì
 
 - intent: ask_advice
   examples: |
-    - What should I wear to a wedding?
-    - How to build a capsule wardrobe?
-    - Give me style advice for summer
-    - What outfit should I wear for a date?
-    - How can I look taller?
-    - What accessories go with this?
-    - How to dress for winter?
-    - What shoes match with jeans?
-    - Can you suggest an outfit for the beach?
-    - How to dress professionally?
-    - Tôi nên mặc gì đi đám cưới?
-    - Làm sao xây dựng tủ đồ cơ bản?
-    - Cho tôi lời khuyên phối đồ mùa hè
-    - Tôi nên mặc gì đi hẹn hò?
-    - Làm sao để trông cao hơn?
-    - Phụ kiện gì phù hợp với bộ này?
-    - Mặc gì cho mùa đông?
-    - Giày gì phối với quần jeans?
+    - tư vấn cho tôi
+    - cho tôi lời khuyên
+    - bạn nghĩ sao
+    - ý kiến của bạn
+    - gợi ý đi
+    - nên làm gì
 
 - intent: ask_general_question
   examples: |
-    - Do you ship internationally?
-    - What payment methods do you accept?
-    - How long does shipping take?
-    - Can I change my order?
-    - What's your return policy?
-    - Do you have physical stores?
-    - How do I track my package?
-    - Are there any promotions?
-    - Do you offer gift wrapping?
-    - How can I contact customer service?
-    - Các bạn giao hàng quốc tế không?
-    - Các bạn nhận thanh toán bằng gì?
-    - Giao hàng mất bao lâu?
-    - Tôi có thể thay đổi đơn hàng không?
-    - Chính sách đổi trả như thế nào?
-    - Các bạn có cửa hàng thực tế không?
-    - Làm sao tôi theo dõi kiện hàng?
-    - Có khuyến mãi gì không?
+    - thời trang nam là gì
+    - cách chăm sóc quần áo
+    - xu hướng thời trang
+    - phong cách là gì
+    - làm sao để ăn mặc đẹp
 
 # ============================================================================
-# 10. REGEX PATTERNS - For better entity extraction
+# 10. HỆ THỐNG
 # ============================================================================
-
-- regex: product_slug
+- intent: inform
   examples: |
-    - [a-z0-9]+-[a-z0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*
-
-- regex: product_code
-  examples: |
-    - [A-Z]{2,3}\d{4,8}
-
-# ============================================================================
-# 10. SLOT FILLING INTENTS (for add to cart flow)
-# ============================================================================
+    - [màu đen](color)
+    - [màu trắng](color)
+    - [màu xanh](color)
+    - [size M](size)
+    - [size L](size)
+    - [1m70](height)
+    - [65kg](weight)
 
 - intent: inform_size
   examples: |
-    - [S](size)
-    - [M](size)
-    - [L](size)
-    - [XL](size)
-    - [XXL](size)
-    - [XS](size)
     - size [S](size)
     - size [M](size)
     - size [L](size)
     - size [XL](size)
-    - size [XXL](size)
-    - I want [M](size)
-    - I want size [L](size)
-    - [XL](size) please
-    - [L](size) for me
-    - Give me [M](size)
-    - [XXL](size) size
-    - The [L](size) one
-    - cho tôi size [M](size)
-    - size [L](size) nhé
-    - [XL](size) được không
-    - tôi muốn [M](size)
-    - cho [L](size)
-    - [XXL](size) đi
-    - 28
-    - 29
-    - 30
-    - 31
-    - 32
-    - size 28
-    - size 30
-    - 32 please
+    - [S](size)
+    - [M](size)
+    - [L](size)
+    - [XL](size)
+    - size [2XL](size)
 
 - intent: inform_color
   examples: |
-    - [black](color)
-    - [white](color)
-    - [blue](color)
-    - [red](color)
-    - [green](color)
-    - [yellow](color)
-    - [grey](color)
-    - [gray](color)
-    - [navy](color)
-    - [pink](color)
-    - [brown](color)
-    - [beige](color)
-    - color [black](color)
-    - color [white](color)
-    - [blue](color) color
-    - the [red](color) one
-    - I want [black](color)
-    - Give me [white](color)
-    - [navy](color) please
     - màu [đen](color)
     - màu [trắng](color)
     - màu [xanh](color)
     - màu [đỏ](color)
     - màu [vàng](color)
-    - [đen](color) nhé
-    - cho màu [trắng](color)
-    - tôi muốn màu [xanh](color)
-    - [đỏ](color) được không
-    - [nâu](color)
+    - [đen](color)
+    - [trắng](color)
+    - [xanh navy](color)
+    - [be](color)
     - [xám](color)
-
-- intent: search_by_price
-  examples: |
-    - show me products under [$50](max_price)
-    - I want something cheaper than [$100](max_price)
-    - products below [$30](max_price)
-    - anything under [$20](max_price)
-    - show items less than [$15](max_price)
-    - I want to buy something cost lower than [$12](max_price)
-    - cost lower than [$20](max_price)
-    - cheaper than [$25](max_price)
-    - under [$50](max_price)
-    - below [$40](max_price)
-    - less than [$30](max_price)
-    - find products between [$10](min_price) and [$50](max_price)
-    - price range [$20](min_price) to [$100](max_price)
-    - from [$15](min_price) to [$40](max_price)
-    - show me [shirts](product_type) under [$20](max_price)
-    - [t-shirts](product_type) below [$15](max_price)
-    - cheap [jackets](product_type)
-    - affordable [shoes](product_type)
-    - budget friendly [pants](product_type)
 
 - intent: inform_quantity
   examples: |
+    - [1](quantity) cái
+    - [2](quantity) cái
+    - [3](quantity) cái
     - [1](quantity)
     - [2](quantity)
     - [3](quantity)
-    - [4](quantity)
     - [5](quantity)
-    - [10](quantity)
-    - quantity [2](quantity)
-    - [3](quantity) pieces
-    - I want [2](quantity)
-    - Give me [3](quantity)
-    - [5](quantity) items
-    - [2](quantity) cái
-    - [3](quantity) chiếc
-    - cho [2](quantity)
-    - tôi muốn [3](quantity)
-    - [5](quantity) sản phẩm
 
 - intent: inform_cancel_reason
   examples: |
-    - changed my mind
-    - I changed my mind
-    - changed mind
-    - I don't want it anymore
-    - don't want it
-    - ordered wrong item
-    - I ordered the wrong item
-    - wrong item
-    - wrong product
-    - ordered wrong product
-    - wrong size
-    - wrong color
-    - wrong size or color
-    - I ordered wrong size
-    - the size is wrong
-    - wrong colour
-    - size color wrong
-    - found a better price
-    - I found it cheaper
-    - found cheaper elsewhere
-    - better price somewhere else
-    - too expensive
-    - delivery is too slow
-    - delivery too slow
-    - takes too long
-    - too slow delivery
-    - shipping is slow
-    - waiting too long
-    - payment issue
-    - payment problem
-    - I can't pay
-    - problem with payment
-    - payment not working
-    - duplicate order
-    - I ordered twice
-    - duplicate
-    - ordered by mistake twice
-    - double order
-    - other reason
-    - other
-    - something else
-    - different reason
+    - đổi ý rồi
+    - tôi đổi ý
+    - không muốn mua nữa
+    - đặt nhầm
+    - sai sản phẩm
+    - sai size
+    - sai màu
+    - tìm được giá rẻ hơn
+    - giao hàng lâu quá
+    - ship chậm
+    - vấn đề thanh toán
+    - không thanh toán được
+    - đặt trùng đơn
+    - lý do khác
 
 - intent: request_human
   examples: |
-    - I need to talk to a human
-    - Can I speak with a person?
-    - I want to talk to an agent
-    - Connect me to customer support
-    - I need human help
-    - Talk to admin
-    - I want to speak with someone
-    - Get me a human agent
-    - This bot isn't helping
-    - I need real support
-    - Connect me to a real person
-    - Let me talk to someone
-    - I want human assistance
-    - Transfer me to an agent
-    - Can I chat with a human?
-    - I prefer talking to a person
-    - Bot is not helpful
-    - I need to speak to support
-    - Connect me with support team
-    - I want to talk to customer service
-    - tôi cần gặp admin
-    - tôi muốn nói chuyện với người thật
-    - kết nối với nhân viên hỗ trợ
-    - bot không giúp được tôi
-    - tôi cần hỗ trợ trực tiếp
-    - cho tôi nói chuyện với người
-    - tôi muốn gặp nhân viên
-    - kết nối với admin
-    - tôi cần nói với người thật
-    - bot này không giúp được
-    - tôi muốn nói chuyện với hỗ trợ
-    - cho tôi gặp người
-    - tôi cần được tư vấn trực tiếp
-    - chuyển cho nhân viên
-    - tôi muốn chat với người
+    - tôi muốn nói chuyện với người
+    - kết nối nhân viên
+    - chuyển sang người thật
+    - gọi nhân viên
+    - cần hỗ trợ trực tiếp
 
-# ============================================================================
-# 11. ENTITIES
-# ============================================================================
-# Entities are extracted from user messages and used in actions
-# Examples: product_name, product_type, order_number, size, color, brand, category
+- intent: search_by_price
+  examples: |
+    - dưới 500k
+    - từ [300k](min_price) đến [500k](max_price)
+    - giá từ [200000](min_price) đến [400000](max_price)
+    - trong khoảng [500000](min_price) [1000000](max_price)
+    - giá rẻ
+    - giá cao cấp
+    - tầm trung

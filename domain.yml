@@ -268,193 +268,193 @@ slots:
 responses:
   # Greetings & Farewells
   utter_greet:
-  - text: "Welcome to LeCas! 👋 I'm here to help you discover casually elegant menswear. What can I assist you with today?"
-  - text: "Hello! Looking for premium menswear? I'm your LeCas shopping assistant. How can I help?"
-  - text: "Welcome to LeCas - Casually Elegant Every Moment. Feel free to ask about products or styling advice!"
+  - text: "Xin chào! 👋 Chào mừng bạn đến với LeCas - Nơi phong cách nam giới được nâng tầm. Mình có thể giúp gì cho bạn hôm nay?"
+  - text: "Chào bạn! Đang tìm kiếm trang phục nam chất lượng? Mình là trợ lý mua sắm của LeCas, sẵn sàng hỗ trợ bạn nhé!"
+  - text: "Chào mừng đến với LeCas - Thanh lịch trong từng khoảnh khắc. Hãy để mình tư vấn sản phẩm hoặc phối đồ cho bạn nha!"
   
   utter_goodbye:
-  - text: "Thank you for visiting LeCas! Stay casually elegant. 😊"
-  - text: "See you soon at LeCas! Remember - Casually Elegant Every Moment. ✨"
-  - text: "Thanks for chatting! Feel free to reach out anytime you need style advice or assistance."
+  - text: "Cảm ơn bạn đã ghé thăm LeCas! Chúc bạn luôn phong độ và tự tin. 😊"
+  - text: "Hẹn gặp lại bạn tại LeCas! Thanh lịch trong từng khoảnh khắc. ✨"
+  - text: "Cảm ơn bạn đã trò chuyện! Liên hệ mình bất cứ lúc nào bạn cần tư vấn nhé."
   
   utter_you_are_welcome:
-  - text: "My pleasure! Anything else I can help with?"
-  - text: "Absolutely! Is there anything else you'd like to know?"
-  - text: "Happy to help! Let me know if you need anything else."
+  - text: "Rất vui được hỗ trợ! Còn điều gì mình có thể giúp bạn không?"
+  - text: "Không có gì! Bạn cần tìm hiểu thêm thông tin nào nữa không?"
+  - text: "Luôn sẵn sàng hỗ trợ bạn! Cứ nhắn mình nếu cần thêm thông tin nhé."
   
   # Bot Identity
   utter_i_am_bot:
-  - text: "I'm LeCas Virtual Shopping Assistant - here to help you discover premium menswear and answer your questions!"
-  - text: "Yes, I'm an AI assistant! But I'm here to make your shopping experience effortlessly elegant. How can I help?"
+  - text: "Mình là trợ lý mua sắm ảo của LeCas - luôn sẵn sàng giúp bạn khám phá những sản phẩm thời trang nam cao cấp và giải đáp mọi thắc mắc!"
+  - text: "Đúng rồi, mình là trợ lý AI đây! Mình ở đây để mang đến trải nghiệm mua sắm tuyệt vời cho bạn. Mình có thể giúp gì?"
   
   # Human Handoff
   utter_request_human_initiated:
-  - text: "I'm connecting you with one of our human support agents. Please wait a moment... 👤"
-  - text: "Let me invite a human agent to assist you. They'll be with you shortly! 🙋"
+  - text: "Mình đang kết nối bạn với nhân viên tư vấn. Vui lòng chờ trong giây lát nhé... 👤"
+  - text: "Để mình mời nhân viên hỗ trợ trực tiếp cho bạn. Họ sẽ có mặt ngay thôi! 🙋"
   
   utter_request_human_error:
-  - text: "Sorry, I couldn't connect you to a human agent at this time. Please try again or contact us via email at support@lecas.com 🙏"
-  - text: "I'm having trouble connecting you right now. Please try again in a moment or email us at support@lecas.com"
+  - text: "Xin lỗi, hiện tại mình chưa kết nối được với nhân viên tư vấn. Bạn vui lòng thử lại hoặc liên hệ qua email support@lecas.com nhé 🙏"
+  - text: "Mình đang gặp chút trục trặc khi kết nối. Bạn thử lại sau hoặc gửi email cho mình tại support@lecas.com nhé"
   
   # Product-related responses
   utter_no_products_found:
-  - text: "I couldn't find any products matching your search. Would you like to try different keywords or browse by category?"
-  - text: "Sorry, no matches found. Could you describe what you're looking for in different words?"
+  - text: "Mình chưa tìm thấy sản phẩm phù hợp với yêu cầu của bạn. Bạn có thể thử tìm với từ khóa khác hoặc xem theo danh mục được không?"
+  - text: "Xin lỗi, mình chưa tìm thấy sản phẩm nào. Bạn có thể mô tả chi tiết hơn về món đồ bạn đang tìm không?"
   
   utter_ask_product_specification:
-  - text: "What specific features or specifications are you looking for?"
-  - text: "Could you tell me more about what you need? Size, color, brand?"
+  - text: "Bạn đang tìm sản phẩm với đặc điểm hoặc thông số cụ thể nào ạ?"
+  - text: "Bạn có thể cho mình biết thêm về yêu cầu của bạn không? Ví dụ: size, màu sắc, chất liệu?"
   
   utter_help_order:
-  - text: "Ready to order? I can guide you through the checkout process or answer any questions first!"
-  - text: "Would you like to proceed with your order, or do you have more questions?"
+  - text: "Sẵn sàng đặt hàng rồi ạ? Mình có thể hướng dẫn bạn thanh toán hoặc giải đáp thêm thắc mắc trước nhé!"
+  - text: "Bạn muốn tiến hành đặt hàng ngay, hay cần tìm hiểu thêm thông tin gì nữa không?"
   
   # Order-related responses
   utter_ask_order_number:
-  - text: "Could you please provide your order number? It usually starts with '#' followed by numbers."
-  - text: "What's your order number? You can find it in your confirmation email."
+  - text: "Bạn vui lòng cung cấp mã đơn hàng nhé? Mã thường bắt đầu bằng '#' hoặc là dãy số."
+  - text: "Mã đơn hàng của bạn là gì ạ? Bạn có thể tìm thấy trong email xác nhận đơn hàng."
   
   utter_order_cancellation_confirmed:
-  - text: "Your cancellation request has been submitted. Our team will process it within 24 hours."
+  - text: "Yêu cầu hủy đơn hàng của bạn đã được ghi nhận. Bộ phận xử lý sẽ phản hồi trong vòng 24 giờ."
   
   # Policy responses (fallback if API fails)
   utter_default_shipping_policy:
-  - text: "Best of all, we offer free shipping on all domestic orders in Vietnam! 🚚\n• Major Cities (Hanoi, HCMC, Da Nang): 1-2 business days\n• Nationwide: 3-5 business days\n\nFor international shipping, we deliver to over 50 countries!"
+  - text: "Tin tốt là chúng mình miễn phí vận chuyển toàn quốc! 🚚\n• Nội thành HN, HCM, Đà Nẵng: 1-2 ngày\n• Toàn quốc: 3-5 ngày\n\nChúng mình cũng hỗ trợ giao hàng quốc tế đến hơn 50 quốc gia nhé!"
   
   utter_default_return_policy:
-  - text: "Our policy is simple: You have 30 days for a full refund if the item is unworn/unwashed and in original condition. Refunds are processed within 5-7 business days once we receive your return. (Shipping costs are non-refundable.)"
+  - text: "Chính sách đổi trả rất đơn giản: Bạn có 30 ngày để đổi trả và hoàn tiền 100% nếu sản phẩm chưa qua sử dụng, còn nguyên tem mác. Tiền hoàn sẽ được xử lý trong 5-7 ngày làm việc sau khi nhận hàng trả. (Phí vận chuyển không được hoàn lại.)"
   
   # Support responses
   utter_contact_info:
-  - text: "Please don't worry, we are here to help! You can reach our Customer Support team through this chat, and we'll handle your request promptly. 😊"
-  - text: "Our team is ready to assist you! Just describe your issue here with your order number, and we'll receive it immediately to resolve it quickly for you!"
+  - text: "Đừng lo lắng, chúng mình luôn sẵn sàng hỗ trợ bạn! Bạn có thể liên hệ với đội ngũ Chăm sóc Khách hàng ngay qua chat này, và chúng mình sẽ xử lý yêu cầu nhanh chóng. 😊"
+  - text: "Đội ngũ của chúng mình luôn sẵn sàng! Bạn chỉ cần mô tả vấn đề kèm mã đơn hàng, mình sẽ nhận và giải quyết ngay cho bạn!"
   
   # Fashion E-commerce Responses (NEW)
   utter_size_guide:
-  - text: "📏 Size Guide:\n• S: 50-55kg, 160-165cm\n• M: 55-65kg, 165-172cm\n• L: 65-75kg, 172-178cm\n• XL: 75-85kg, 178cm+\n\nWould you like personalized sizing advice? 😊"
-  - text: "To choose the right size:\n1️⃣ Measure height & weight\n2️⃣ Check size chart\n3️⃣ If between sizes, size up\n\nNeed specific size advice?"
+  - text: "📏 Bảng size chuẩn:\n• S: 50-55kg, 160-165cm\n• M: 55-65kg, 165-172cm\n• L: 65-75kg, 172-178cm\n• XL: 75-85kg, 178cm+\n\nBạn cần tư vấn size cụ thể không ạ? 😊"
+  - text: "Để chọn size phù hợp:\n1️⃣ Đo chiều cao & cân nặng\n2️⃣ Đối chiếu bảng size\n3️⃣ Nếu ở giữa 2 size, nên chọn size lớn hơn\n\nCần mình tư vấn thêm không?"
   
   utter_material_info:
-  - text: "This product is made from premium, breathable, and durable materials. Which specific product would you like details about?"
-  - text: "We have various materials: 100% Cotton, Polyester, Blends... Which product are you checking? 👕"
+  - text: "Sản phẩm này được làm từ chất liệu cao cấp, thoáng mát và bền đẹp. Bạn muốn biết chi tiết về sản phẩm nào ạ?"
+  - text: "Chúng mình có nhiều loại chất liệu: Cotton 100%, Polyester, Vải pha... Bạn đang xem sản phẩm nào vậy? 👕"
   
   utter_colors_available:
-  - text: "This product comes in: Black, White, Gray, Navy. Which color do you prefer? 🎨"
-  - text: "Let me check which colors are in stock! Which product are you viewing?"
+  - text: "Sản phẩm này có các màu: Đen, Trắng, Xám, Xanh Navy. Bạn thích màu nào ạ? 🎨"
+  - text: "Để mình kiểm tra màu còn hàng nhé! Bạn đang xem sản phẩm nào vậy?"
   
   utter_promotions_info:
-  - text: "🎉 Current promotions:\n• 20% off orders over $50\n• Free shipping over $30\n• Loyalty points rewards\n\nUse code: FASHION20 at checkout!"
-  - text: "Hot sale now! 🔥\n- Up to 30% off selected items\n- 3-piece combo 25% off\n- Free nationwide shipping\n\nShop now before they're gone! 😊"
+  - text: "🎉 Khuyến mãi hiện tại:\n• Giảm 20% cho đơn từ 500k\n• Miễn phí ship đơn từ 300k\n• Tích điểm thành viên\n\nNhập mã: FASHION20 khi thanh toán nhé!"
+  - text: "Sale hot đây! 🔥\n- Giảm đến 30% sản phẩm chọn lọc\n- Combo 3 món giảm 25%\n- Freeship toàn quốc\n\nMua ngay kẻo hết! 😊"
   
   utter_delivery_info:
-  - text: "⏰ Delivery time:\n• City: 1-2 days\n• Suburbs: 2-4 days\n• Provinces: 3-5 days\n\nWe ship super fast! 🚚"
-  - text: "Fast delivery! Usually 2-3 days. Order today, wear this weekend! 😎"
+  - text: "⏰ Thời gian giao hàng:\n• Nội thành: 1-2 ngày\n• Ngoại thành: 2-4 ngày\n• Tỉnh thành: 3-5 ngày\n\nGiao hàng siêu nhanh! 🚚"
+  - text: "Giao hàng nhanh chóng! Thường 2-3 ngày là có. Đặt hôm nay, mặc cuối tuần! 😎"
   
   utter_ask_delivery_options:
   - text: |
-      🚚 **Delivery Options**
+      🚚 **Tùy chọn giao hàng**
       
-      **Standard Delivery**
-      • 3-5 Business Days
-      • Free (Domestic)
+      **Giao hàng tiêu chuẩn**
+      • 3-5 ngày làm việc
+      • Miễn phí (Toàn quốc)
       
-      **Express Delivery**
-      • 1-2 Business Days
-      • $15.99
+      **Giao hàng nhanh**
+      • 1-2 ngày làm việc
+      • 30.000đ
       
-      **Next Day Delivery**
-      • Order by 2PM
-      • $24.99
+      **Giao hàng hỏa tốc**
+      • Đặt trước 14h
+      • 50.000đ
       
-      We ship nationwide across Vietnam with free domestic delivery.
-      International shipping is also available to selected regions.
+      Chúng mình giao hàng toàn quốc với phí ship miễn phí nội địa.
+      Cũng hỗ trợ giao hàng quốc tế đến một số khu vực.
   
   utter_ask_cancel_reason:
   - text: |
-      Before I proceed with cancellation, could you tell me the reason?
+      Trước khi xử lý hủy đơn, bạn có thể cho mình biết lý do không ạ?
       
-      • Changed my mind
-      • Ordered the wrong item
-      • Wrong size or color
-      • Found a better price elsewhere
-      • Delivery time is too long
-      • Payment issue
-      • Duplicate order
-      • Other reason
+      • Đổi ý không muốn mua nữa
+      • Đặt nhầm sản phẩm
+      • Sai size hoặc màu
+      • Tìm được giá tốt hơn
+      • Thời gian giao hàng quá lâu
+      • Vấn đề thanh toán
+      • Đặt trùng đơn
+      • Lý do khác
       
-      Please type the number or the reason.
+      Bạn vui lòng nhập số thứ tự hoặc gõ lý do nhé.
   
   utter_ask_cancel_confirmation:
-  - text: "Are you sure you want to cancel this order?"
+  - text: "Bạn chắc chắn muốn hủy đơn hàng này chứ?"
   
   utter_cancel_success:
-  - text: "✅ Your order has been successfully canceled. If you need help placing a new order, feel free to let me know 😊"
+  - text: "✅ Đơn hàng của bạn đã được hủy thành công. Nếu cần hỗ trợ đặt đơn mới, cứ nhắn mình nhé 😊"
   
   utter_cancel_cannot_confirmed:
   - text: |
-      Your order is currently confirmed and waiting for delivery.
-      At this stage, the order can no longer be canceled.
+      Đơn hàng của bạn hiện đang được xác nhận và chờ giao.
+      Ở giai đoạn này, đơn hàng không thể hủy được nữa ạ.
       
-      📦 You can still refuse the package upon delivery or request a return after receiving it, according to our return policy.
+      📦 Bạn vẫn có thể từ chối nhận hàng khi shipper đến, hoặc yêu cầu đổi trả sau khi nhận hàng theo chính sách đổi trả của shop.
   
   utter_cancel_cannot_shipping:
   - text: |
-      Your order is currently being shipped, so it cannot be canceled anymore.
+      Đơn hàng của bạn đang được giao, nên không thể hủy được nữa ạ.
       
-      👉 A common option is to refuse the delivery when the courier arrives, or initiate a return after the package is delivered.
+      👉 Bạn có thể từ chối nhận hàng khi shipper đến, hoặc làm thủ tục đổi trả sau khi nhận hàng nhé.
   
   utter_cancel_cannot_delivered:
   - text: |
-      This order has already been delivered, so cancellation is no longer possible.
+      Đơn hàng này đã được giao thành công rồi, nên không thể hủy được nữa ạ.
       
-      🔄 You may request a return or refund according to our return policy if the product meets the conditions.
+      🔄 Bạn có thể yêu cầu đổi trả hoặc hoàn tiền theo chính sách đổi trả nếu sản phẩm đáp ứng điều kiện.
   
   utter_delivery_international:
   - text: |
-      🌍 **International Shipping**
+      🌍 **Giao hàng quốc tế**
       
-      **Asia** (Thailand, Singapore, Malaysia, etc.)
-      • 5-7 business days - $8.99
+      **Châu Á** (Thái Lan, Singapore, Malaysia, v.v.)
+      • 5-7 ngày làm việc - 200.000đ
       
-      **Rest of the world**
-      • 10-14 business days - $15.99
+      **Các khu vực khác**
+      • 10-14 ngày làm việc - 350.000đ
       
-      Express international shipping available upon request.
+      Giao hàng quốc tế nhanh có thể đặt theo yêu cầu.
       
-      Note: Customs duties and taxes may apply depending on your country's regulations.
+      Lưu ý: Thuế và phí hải quan có thể phát sinh tùy theo quy định của quốc gia bạn.
   
   utter_fit_info:
-  - text: "This is regular fit - not too loose or tight. Suits all body types! 👔"
-  - text: "We have all fits: Slim fit (fitted), Regular (standard), Oversize (loose). What's your style?"
+  - text: "Đây là dáng regular fit - không quá rộng hay bó. Phù hợp với mọi vóc dáng! 👔"
+  - text: "Chúng mình có đủ dáng: Slim fit (ôm), Regular (vừa vặn), Oversize (rộng). Bạn thích phong cách nào?"
   
   utter_styling_advice:
-  - text: "✨ Styling suggestions:\n• Polo + chinos = Office smart\n• T-shirt + jeans = Casual street\n• Dress shirt + slacks = Event elegant\n\nWhat occasion?"
-  - text: "I recommend pairing this with:\n🔹 Black/navy jeans\n🔹 White sneakers\n🔹 Add watch/bracelet for trend!\n\nWant to see outfit samples? 📸"
+  - text: "✨ Gợi ý phối đồ:\n• Polo + quần kaki = Công sở lịch sự\n• Áo thun + jeans = Dạo phố năng động\n• Sơ mi + quần âu = Sự kiện sang trọng\n\nBạn định mặc cho dịp nào?"
+  - text: "Mình gợi ý phối với:\n🔹 Quần jeans đen/xanh navy\n🔹 Giày sneaker trắng\n🔹 Thêm đồng hồ/vòng tay cho trendy!\n\nBạn muốn xem mẫu outfit không? 📸"
   
   utter_occasion_suggestions:
-  - text: "For work, choose:\n👔 Polo, dress shirts\n👖 Chinos, slacks\n👞 Leather/loafers\n\nNeed specific recommendations?"
-  - text: "Outfit by occasion:\n• Work: Smart casual\n• Hangout: Streetwear\n• Date: Neat & clean\n• Travel: Comfortable\n\nWhat occasion?"
+  - text: "Đi làm nên chọn:\n👔 Áo polo, sơ mi\n👖 Quần kaki, quần âu\n👞 Giày da/loafer\n\nCần tư vấn cụ thể không?"
+  - text: "Trang phục theo dịp:\n• Đi làm: Smart casual\n• Đi chơi: Streetwear\n• Hẹn hò: Gọn gàng & lịch sự\n• Du lịch: Thoải mái\n\nBạn cần cho dịp nào?"
   
   utter_product_comparison:
-  - text: "Let me compare products for you! Which two items are you deciding between?"
-  - text: "Sure! Tell me which 2 products to compare for price/quality/style analysis!"
+  - text: "Để mình so sánh sản phẩm giúp bạn! Bạn đang phân vân giữa 2 món nào?"
+  - text: "Được ạ! Bạn cho mình biết 2 sản phẩm cần so sánh về giá/chất lượng/phong cách nhé!"
   
   utter_reviews_info:
-  - text: "This product is highly rated! ⭐⭐⭐⭐⭐\n• Great quality\n• Perfect fit\n• Fair price\n\nMany customers love it!"
-  - text: "Customer reviews:\n💯 Good quality\n💯 True to size\n💯 Color as shown\n\nOrder with confidence! 😊"
+  - text: "Sản phẩm này được đánh giá cao! ⭐⭐⭐⭐⭐\n• Chất lượng tuyệt vời\n• Vừa vặn chuẩn size\n• Giá cả hợp lý\n\nRất nhiều khách hàng yêu thích!"
+  - text: "Đánh giá từ khách hàng:\n💯 Chất lượng tốt\n💯 Chuẩn size\n💯 Màu đúng hình\n\nYên tâm đặt hàng nhé! 😊"
   
   # Support responses
   utter_support_ticket_created:
-  - text: "Support ticket created successfully! 🎫\nOur team will contact you within 24h. Thank you for your patience!"
-  - text: "Your ticket has been recorded! ✅\nSupport team will process and respond ASAP. Thank you!"
+  - text: "Yêu cầu hỗ trợ đã được tạo thành công! 🎫\nĐội ngũ sẽ liên hệ với bạn trong 24h. Cảm ơn bạn đã kiên nhẫn!"
+  - text: "Phiếu hỗ trợ đã được ghi nhận! ✅\nĐội ngũ sẽ xử lý và phản hồi sớm nhất. Cảm ơn bạn!"
   
   # Clarification responses
   utter_ask_rephrase:
-  - text: "I'm not sure I understood that correctly. Could you rephrase your question?"
-  - text: "Could you explain that in different words? I want to make sure I help you correctly."
+  - text: "Mình chưa hiểu rõ lắm. Bạn có thể diễn đạt lại câu hỏi được không?"
+  - text: "Bạn có thể giải thích theo cách khác được không? Mình muốn đảm bảo hỗ trợ bạn đúng nhất."
   
   utter_default:
-  - text: "I can help you with product searches, order tracking, shipping policies, and more. What would you like to know?"
+  - text: "Mình có thể hỗ trợ bạn tìm kiếm sản phẩm, tra cứu đơn hàng, chính sách vận chuyển và nhiều thứ khác. Bạn muốn biết gì ạ?"
 
 # ============================================================================
 # ACTIONS - Custom actions implemented in actions.py
