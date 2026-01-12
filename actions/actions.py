@@ -69,6 +69,24 @@ def get_customer_id_from_tracker(tracker: Tracker) -> int:
     return None
 
 
+def get_intent_from_tracker(tracker: Tracker) -> str:
+    """
+    Extract intent name from tracker for analytics tracking.
+    
+    Args:
+        tracker: Rasa tracker object
+        
+    Returns:
+        Intent name (str) or None if not available
+    """
+    try:
+        intent = tracker.latest_message.get('intent', {}).get('name')
+        return intent
+    except Exception as e:
+        logger.warning(f"⚠️ Could not extract intent: {e}")
+        return None
+
+
 # ============================================================================
 # GEMINI AI SAFETY - System Prompts & Validation
 # ============================================================================
@@ -265,6 +283,8 @@ class ActionSearchProducts(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         # 1. Get search query from entities or user message
         product_type = next(tracker.get_latest_entity_values("product_type"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
@@ -282,7 +302,7 @@ class ActionSearchProducts(Action):
         if not search_query:
             dispatcher.utter_message(
                 text="What are you looking for? Shirts, pants, jackets, or maybe some accessories? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
@@ -297,7 +317,7 @@ class ActionSearchProducts(Action):
                      "• Styling advice & fit guidance 📏\n"
                      "• Order tracking & policies 📦\n\n"
                      "What can I help you find today?",
-                metadata={"source": "rasa_template", "out_of_scope": True}
+                metadata={"source": "rasa_template", "out_of_scope": True, "intent": intent}
             )
             return [SlotSet("products_found", False)]
         
@@ -313,7 +333,7 @@ class ActionSearchProducts(Action):
                 logger.error(f"❌ API Error: {result.get('error')}")
                 dispatcher.utter_message(
                     text="I'm having trouble connecting to the product catalog right now. 🙏",
-                    metadata={"source": "backend", "error": True}
+                    metadata={"source": "backend", "error": True, "intent": intent}
                 )
                 return [SlotSet("products_found", False)]
             
@@ -335,15 +355,19 @@ class ActionSearchProducts(Action):
             if not products:
                 dispatcher.utter_message(
                     text=f"Sorry, I couldn't find any products matching '{search_query}' 😅\n\nCould you describe it differently?",
-                    metadata={"source": "backend", "type": "no_results"}
+                    metadata={"source": "backend", "type": "no_results", "intent": intent}
                 )
                 return [SlotSet("products_found", False)]
             
-            # Format products for frontend ProductCarousel
-            # Chatbot API returns: product_id, name, category, price
-            product_list = []
+            # Format products and classify by relevance_score
+            # Score >= 0.3: main results, Score < 0.3: suggestions
+            CONFIDENCE_THRESHOLD = 0.3
+            
+            main_products = []
+            suggestion_products = []
+            
             for p in products:
-                product_list.append({
+                product_data = {
                     "product_id": p.get("product_id") or p.get("id"),
                     "name": p.get("name"),
                     "slug": p.get("slug"),
@@ -351,34 +375,114 @@ class ActionSearchProducts(Action):
                     "thumbnail": p.get("thumbnail") or p.get("thumbnail_url"),
                     "rating": float(p.get("rating") or p.get("average_rating") or 0),
                     "reviews": p.get("reviews") or p.get("total_reviews") or 0,
-                    "in_stock": p.get("in_stock", True)
-                })
-            
-            # Send text + custom data for ProductCarousel
-            dispatcher.utter_message(
-                text=f"Found {len(products)} products for '{search_query}':",
-                json_message={
-                    "type": "product_list",
-                    "products": product_list
+                    "in_stock": p.get("in_stock", True),
+                    "relevance_score": p.get("relevance_score")
                 }
-            )
+                
+                # Classify by confidence score
+                score = p.get("relevance_score")
+                if score is not None and score < CONFIDENCE_THRESHOLD:
+                    suggestion_products.append(product_data)
+                else:
+                    # If no score or score >= threshold → main product
+                    main_products.append(product_data)
             
-            dispatcher.utter_message(
-                text="💡 Click on any product to see details! 😊"
-            )
+            # Message templates
+            import random
+            
+            # Templates for FOUND results (sale tone)
+            found_templates = [
+                "Mình đã tìm thấy {count} sản phẩm phù hợp với \"{keyword}\" cho bạn.\nCác mẫu đang được nhiều khách quan tâm, bạn xem chi tiết từng sản phẩm nhé.",
+                "Có {count} mẫu đúng với \"{keyword}\" rồi nè.\nBạn bấm vào sản phẩm để xem giá và ưu đãi hiện có nhé.",
+                "Mình tìm được {count} sản phẩm theo \"{keyword}\".\nXem thử từng mẫu để chọn chiếc phù hợp nhất với bạn nha."
+            ]
+            
+            # Templates for NO results (soft sale)
+            no_results_templates = [
+                "Hiện tại shop chưa có sản phẩm đúng với \"{keyword}\".\nBạn thử tìm với từ khóa khác hoặc xem các mẫu tương tự bên dưới nhé, biết đâu lại hợp gu.",
+                "Rất tiếc, chưa có sản phẩm phù hợp với \"{keyword}\".\nBạn có thể tham khảo các mẫu đang bán chạy hoặc thử tìm theo chủ đề khác.",
+                "Shop chưa có đúng mẫu bạn tìm, nhưng bên mình có nhiều thiết kế tương tự đang được khách chọn nhiều.\nBạn xem thử bên dưới nhé."
+            ]
+            
+            # Display logic
+            if main_products:
+                # Case 1: Has main products → use FOUND template
+                message = random.choice(found_templates).format(
+                    count=len(main_products),
+                    keyword=search_query
+                )
+                
+                dispatcher.utter_message(
+                    text=message,
+                    metadata={"intent": intent}
+                )
+                
+                dispatcher.utter_message(
+                    json_message={
+                        "type": "product_list",
+                        "products": main_products,
+                        "intent": intent
+                    },
+                    metadata={"intent": intent}
+                )
+                
+                # If has suggestions, show them separately
+                if suggestion_products:
+                    dispatcher.utter_message(
+                        text="\n💡 Hoặc bạn tham khảo các sản phẩm tương tự:",
+                        metadata={"intent": intent}
+                    )
+                    dispatcher.utter_message(
+                        json_message={
+                            "type": "product_list",
+                            "products": suggestion_products,
+                            "is_suggestion": True,
+                            "intent": intent
+                        },
+                        metadata={"intent": intent}
+                    )
+                
+            elif suggestion_products:
+                # Case 2: Only suggestions (no high-confidence results) → use NO RESULTS template
+                message = random.choice(no_results_templates).format(
+                    keyword=search_query
+                )
+                
+                dispatcher.utter_message(
+                    text=message,
+                    metadata={"intent": intent}
+                )
+                dispatcher.utter_message(
+                    json_message={
+                        "type": "product_list",
+                        "products": suggestion_products,
+                        "is_suggestion": True,
+                        "intent": intent
+                    },
+                    metadata={"intent": intent}
+                )
+                
+            else:
+                # Case 3: Completely no results (should not happen if backend returns suggestions)
+                message = random.choice(no_results_templates).format(
+                    keyword=search_query
+                )
+                dispatcher.utter_message(text=message, metadata={"intent": intent})
+                return [SlotSet("products_found", False)]
             
             # Save to slots
+            all_products = main_products + suggestion_products
             return [
-                SlotSet("products_found", True),
+                SlotSet("products_found", len(main_products) > 0),
                 SlotSet("last_search_query", search_query),
-                SlotSet("last_products", products[:10])
+                SlotSet("last_products", all_products[:10])
             ]
             
         except Exception as e:
             logger.error(f"❌ Exception in ActionSearchProducts: {e}")
             dispatcher.utter_message(
                 text="Oops, something went wrong. Please try again later! 🙏",
-                metadata={"source": "backend", "error": True, "exception": str(e)}
+                metadata={"source": "backend", "error": True, "exception": str(e), "intent": intent}
             )
             return [SlotSet("products_found", False)]
 
@@ -395,6 +499,8 @@ class ActionSearchByPrice(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        
+        intent = get_intent_from_tracker(tracker)
         
         max_price_str = next(tracker.get_latest_entity_values("max_price"), None)
         min_price_str = next(tracker.get_latest_entity_values("min_price"), None)
@@ -416,7 +522,7 @@ class ActionSearchByPrice(Action):
                 pass
         
         if not max_price and not min_price:
-            dispatcher.utter_message(text="What's your budget? For example: 'under $20' or 'between $10 and $50'")
+            dispatcher.utter_message(text="What's your budget? For example: 'under $20' or 'between $10 and $50'", metadata={"intent": intent})
             return []
         
         logger.info(f"💰 Price search: min={min_price}, max={max_price}, type={product_type}")
@@ -438,7 +544,7 @@ class ActionSearchByPrice(Action):
                 elif min_price:
                     price_range_msg = f"over ${min_price}"
                 
-                dispatcher.utter_message(text=f"I couldn't find products {price_range_msg} 😅\n\nWould you like to try a different price range?")
+                dispatcher.utter_message(text=f"I couldn't find products {price_range_msg} 😅\n\nWould you like to try a different price range?", metadata={"intent": intent})
                 return [SlotSet("products_found", False)]
             
             price_desc = ""
@@ -477,7 +583,7 @@ class ActionSearchByPrice(Action):
             
             message += "\n💡 Which one interests you? 😊"
             
-            dispatcher.utter_message(text=message)
+            dispatcher.utter_message(text=message, metadata={"intent": intent})
             
             return [
                 SlotSet("products_found", True),
@@ -486,7 +592,7 @@ class ActionSearchByPrice(Action):
             
         except Exception as e:
             logger.error(f"❌ Exception in ActionSearchByPrice: {e}")
-            dispatcher.utter_message(text="Oops, I had trouble searching by price. Please try again! 🙏")
+            dispatcher.utter_message(text="Oops, I had trouble searching by price. Please try again! 🙏", metadata={"intent": intent})
             return [SlotSet("products_found", False)]
 
 
@@ -523,7 +629,8 @@ class ActionGetSizingAdvice(Action):
                     "To recommend the best size, please tell me: "
                     + ", ".join(missing_parts)
                     + ". For example: 'I'm 1m75, 70kg and want the classic polo'."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
@@ -532,12 +639,12 @@ class ActionGetSizingAdvice(Action):
         # First, search for the product to get product_id
         search_result = api_client.search_products(product_name, limit=1)
         if search_result.get("error") or not search_result.get("products"):
-            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Could you verify the product name?")
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Could you verify the product name?", metadata={"intent": intent})
             return []
         
         product_id = search_result["products"][0].get("id")
         if not product_id:
-            dispatcher.utter_message(text="I found the product but couldn't get its details. Please try again.")
+            dispatcher.utter_message(text="I found the product but couldn't get its details. Please try again.", metadata={"intent": intent})
             return []
         
         # Get sizing advice with product_id
@@ -554,19 +661,21 @@ class ActionGetSizingAdvice(Action):
                 text=(
                     "I couldn't get a precise sizing recommendation right now. "
                     "As a general rule, if you are between sizes, it's usually safer to size up for a relaxed fit."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
         advice = result.get("data", {}).get("advice") or result.get("advice")
         if advice:
-            dispatcher.utter_message(text=advice)
+            dispatcher.utter_message(text=advice, metadata={"intent": intent})
         else:
             dispatcher.utter_message(
                 text=(
                     "Based on your height, weight and preferences, I would recommend checking the size chart "
                     "for chest and waist measurements and choosing the closest match."
-                )
+                ),
+                metadata={"intent": intent}
             )
 
         return []
@@ -585,10 +694,12 @@ class ActionGetStylingAdvice(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
 
         if not product_name:
-            dispatcher.utter_message(text="Which product would you like styling advice for?")
+            dispatcher.utter_message(text="Which product would you like styling advice for?", metadata={"intent": intent})
             return []
 
         api_client = get_api_client()
@@ -601,7 +712,7 @@ class ActionGetStylingAdvice(Action):
         
         product_id = search_result["data"][0].get("id")
         if not product_id:
-            dispatcher.utter_message(text="I found the product but couldn't get styling details.")
+            dispatcher.utter_message(text="I found the product but couldn't get styling details.", metadata={"intent": intent})
             return []
         
         # Get styling advice using real API
@@ -612,20 +723,22 @@ class ActionGetStylingAdvice(Action):
                 text=(
                     "Here are some generic styling tips: pair slim jeans with a clean sneaker, "
                     "and balance oversized tops with more fitted bottoms."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
         # Extract styling rules from response
         styling_rules = result.get("data", {}).get("styling_rules") or result.get("styling_rules")
         if styling_rules:
-            dispatcher.utter_message(text=styling_rules)
+            dispatcher.utter_message(text=styling_rules, metadata={"intent": intent})
         else:
             dispatcher.utter_message(
                 text=(
                     "You can combine this piece with neutral basics (black, white, navy) "
                     "and simple sneakers for a clean, casual look."
-                )
+                ),
+                metadata={"intent": intent}
             )
 
         return []
@@ -644,11 +757,14 @@ class ActionGetProductCare(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
 
         if not product_name:
             dispatcher.utter_message(
-                text="Which product would you like care instructions for?"
+                text="Which product would you like care instructions for?",
+                metadata={"intent": intent}
             )
             return []
 
@@ -657,12 +773,12 @@ class ActionGetProductCare(Action):
         # Search for product to get product_id
         search_result = api_client.search_products(product_name, limit=1)
         if search_result.get("error") or not search_result.get("data"):
-            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please check the product name.")
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please check the product name.", metadata={"intent": intent})
             return []
         
         product_id = search_result["data"][0].get("id")
         if not product_id:
-            dispatcher.utter_message(text="I found the product but couldn't get care details.")
+            dispatcher.utter_message(text="I found the product but couldn't get care details.", metadata={"intent": intent})
             return []
         
         # Get care instructions from product details (real API call)
@@ -673,19 +789,21 @@ class ActionGetProductCare(Action):
                 text=(
                     "As a general rule, wash similar colors together, use gentle cycles, "
                     "and avoid high heat drying to maintain the shape and color."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
         care_text = result.get("care")
         if care_text:
-            dispatcher.utter_message(text=f"Care instructions: {care_text}")
+            dispatcher.utter_message(text=f"Care instructions: {care_text}", metadata={"intent": intent})
         else:
             dispatcher.utter_message(
                 text=(
                     "Please follow the care label on the garment. If you are unsure, "
                     "cold wash and air dry is usually the safest option."
-                )
+                ),
+                metadata={"intent": intent}
             )
 
         return []
@@ -704,6 +822,8 @@ class ActionReportOrderError(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         error_type = next(tracker.get_latest_entity_values("error_type"), None)
@@ -716,7 +836,8 @@ class ActionReportOrderError(Action):
             dispatcher.utter_message(
                 text=(
                     "To review issues with a specific order, please sign in first so I can verify your purchases."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
         
@@ -727,8 +848,13 @@ class ActionReportOrderError(Action):
         if not order_number or not product_name or not error_type:
             dispatcher.utter_message(
                 text=(
-                    "Please tell me the order number, which item is affected, and whether it is missing or extra."
-                )
+                    "Bạn cho mình biết thêm thông tin nhé:\n"
+                    "- Mã đơn hàng\n"
+                    "- Sản phẩm nào bị lỗi\n"
+                    "- Vấn đề gì (thiếu hàng, thừa hàng, bị hư hỏng...)\n\n"
+                    "Mình sẽ hỗ trợ bạn ngay!"
+                ),
+                metadata={"intent": intent}
             )
             return []
 
@@ -748,16 +874,18 @@ class ActionReportOrderError(Action):
         if result.get("error"):
             dispatcher.utter_message(
                 text=(
-                    "I've logged your order issue and created a ticket for our support team. "
-                    "They will review your case and get back to you shortly."
-                )
+                    "Mình đã ghi nhận vấn đề của bạn và tạo phiếu hỗ trợ rồi nhé. \n"
+                    "Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất có thể!"
+                ),
+                metadata={"intent": intent}
             )
         else:
             dispatcher.utter_message(
                 text=(
-                    "Thank you for letting us know. I have recorded the problem with your order "
-                    "and our support team will follow up with you as soon as possible."
-                )
+                    "Cảm ơn bạn đã thông báo! Mình đã ghi nhận vấn đề về đơn hàng của bạn. \n"
+                    "Bộ phận hỗ trợ sẽ liên hệ lại với bạn trong thời gian sớm nhất nhé!"
+                ),
+                metadata={"intent": intent}
             )
 
         return []
@@ -776,6 +904,8 @@ class ActionRequestReturnOrExchange(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
         product_to_return = next(tracker.get_latest_entity_values("product_to_return"), None)
         reason = next(tracker.get_latest_entity_values("reason"), None)
@@ -788,7 +918,8 @@ class ActionRequestReturnOrExchange(Action):
             dispatcher.utter_message(
                 text=(
                     "To request an exchange or return, please sign in so I can verify your order details."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
         
@@ -800,7 +931,8 @@ class ActionRequestReturnOrExchange(Action):
             dispatcher.utter_message(
                 text=(
                     "Please provide the order number, which item you want to exchange, and the reason."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
@@ -821,14 +953,16 @@ class ActionRequestReturnOrExchange(Action):
                 text=(
                     "I've recorded your request. Our support team will review whether the item is eligible "
                     "for return or exchange under our policy and will contact you soon."
-                )
+                ),
+                metadata={"intent": intent}
             )
         else:
             dispatcher.utter_message(
                 text=(
                     "Your exchange/return request has been submitted. You will receive further instructions "
                     "by email if it is approved."
-                )
+                ),
+                metadata={"intent": intent}
             )
 
         return []
@@ -847,6 +981,8 @@ class ActionReportQualityIssue(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         defect_description = next(tracker.get_latest_entity_values("defect_description"), None)
 
@@ -857,7 +993,8 @@ class ActionReportQualityIssue(Action):
             dispatcher.utter_message(
                 text=(
                     "To review a quality issue for a purchase, please sign in so I can check your order history."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
         
@@ -869,7 +1006,8 @@ class ActionReportQualityIssue(Action):
             dispatcher.utter_message(
                 text=(
                     "Please describe which product has the issue and what exactly is wrong with it."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
@@ -887,12 +1025,14 @@ class ActionReportQualityIssue(Action):
             text=(
                 "I'm sorry to hear about the quality issue. I have forwarded the details to our team. "
                 "They will check whether this is covered under warranty or considered normal wear and tear."
-            )
+            ),
+            metadata={"intent": intent}
         )
 
         if result.get("error"):
             dispatcher.utter_message(
-                text="If you can, please also attach photos when our support team contacts you."
+                text="If you can, please also attach photos when our support team contacts you.",
+                metadata={"intent": intent}
             )
 
         return []
@@ -911,6 +1051,8 @@ class ActionHandlePolicyException(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         policy_type = next(tracker.get_latest_entity_values("policy_type"), None)
         reason = next(tracker.get_latest_entity_values("reason"), None)
@@ -922,7 +1064,8 @@ class ActionHandlePolicyException(Action):
             dispatcher.utter_message(
                 text=(
                     "For special policy exceptions, please sign in first so we can verify your purchase."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
         
@@ -935,7 +1078,8 @@ class ActionHandlePolicyException(Action):
                 text=(
                     "Please tell me which product, which policy applies (for example 'final sale'), "
                     "and why you are requesting an exception."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
 
@@ -955,7 +1099,8 @@ class ActionHandlePolicyException(Action):
             text=(
                 "I understand your situation. Normally this policy is strict, but because there is a potential defect, "
                 "I have escalated your case to our support team for a manual review."
-            )
+            ),
+            metadata={"intent": intent}
         )
 
         return []
@@ -974,6 +1119,8 @@ class ActionSetStockNotification(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         size = next(tracker.get_latest_entity_values("size"), None)
 
@@ -984,7 +1131,8 @@ class ActionSetStockNotification(Action):
             dispatcher.utter_message(
                 text=(
                     "To receive stock notifications, please sign in so we can link the alert to your account."
-                )
+                ),
+                metadata={"intent": intent}
             )
             return []
         
@@ -994,7 +1142,8 @@ class ActionSetStockNotification(Action):
 
         if not product_name:
             dispatcher.utter_message(
-                text="Please tell me which product you want to be notified about."
+                text="Please tell me which product you want to be notified about.",
+                metadata={"intent": intent}
             )
             return []
 
@@ -1003,7 +1152,7 @@ class ActionSetStockNotification(Action):
         # Search for product to get product_id
         search_result = api_client.search_products(product_name, limit=1)
         if search_result.get("error") or not search_result.get("data"):
-            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please verify the product name.")
+            dispatcher.utter_message(text=f"I couldn't find '{product_name}'. Please verify the product name.", metadata={"intent": intent})
             return []
         
         product = search_result["data"][0]
@@ -1024,11 +1173,13 @@ class ActionSetStockNotification(Action):
                 text=(
                     "I couldn't register a stock notification right now, but you can also add this item "
                     "to your favourites and check back later."
-                )
+                ),
+                metadata={"intent": intent}
             )
         else:
             dispatcher.utter_message(
-                text=f"Got it! I will notify you when '{product_name}' is back in stock."
+                text=f"Got it! I will notify you when '{product_name}' is back in stock.",
+                metadata={"intent": intent}
             )
 
         return []
@@ -1047,12 +1198,15 @@ class ActionCheckDiscount(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
 
+        intent = get_intent_from_tracker(tracker)
+        
         api_client = get_api_client()
         result = api_client.get_top_discounts(limit=10)
 
         if result.get("error"):
             dispatcher.utter_message(
-                text="I couldn't fetch the current discounts right now. Please check our sale section on the website."
+                text="I couldn't fetch the current discounts right now. Please check our sale section on the website.",
+                metadata={"intent": intent}
             )
             return []
 
@@ -1060,7 +1214,8 @@ class ActionCheckDiscount(Action):
         
         if not products:
             dispatcher.utter_message(
-                text="There are no special discounts available at the moment, but we update our deals regularly!"
+                text="There are no special discounts available at the moment, but we update our deals regularly!",
+                metadata={"intent": intent}
             )
             return []
 
@@ -1080,7 +1235,7 @@ class ActionCheckDiscount(Action):
         
         response += "Would you like to know more about any of these products?"
         
-        dispatcher.utter_message(text=response)
+        dispatcher.utter_message(text=response, metadata={"intent": intent})
         return [SlotSet("last_products", products)]
 
 
@@ -1097,6 +1252,8 @@ class ActionGetProductPrice(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
         if not product_name:
@@ -1106,10 +1263,10 @@ class ActionGetProductPrice(Action):
                 response = "Here are the prices from your last search:\n\n"
                 for product in last_products:
                     response += f"• {product.get('name')}: ${product.get('price')}\n"
-                dispatcher.utter_message(text=response)
+                dispatcher.utter_message(text=response, metadata={"intent": intent})
                 return []
             else:
-                dispatcher.utter_message(text="Which product would you like to know the price of? 😊")
+                dispatcher.utter_message(text="Which product would you like to know the price of? 😊", metadata={"intent": intent})
                 return []
         
         logger.info(f"Getting price for product: {product_name}")
@@ -1123,7 +1280,8 @@ class ActionGetProductPrice(Action):
         
         if result.get("error") or not result.get("products"):
             dispatcher.utter_message(
-                text=f"Hmm, I couldn't find pricing for '{product_name}' 😅\n\nWould you like me to search for something similar?"
+                text=f"Hmm, I couldn't find pricing for '{product_name}' 😅\n\nWould you like me to search for something similar?",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1134,11 +1292,13 @@ class ActionGetProductPrice(Action):
         if isinstance(price, (int, float)) and price > 0:
             price_str = f"{price:,.0f}₫"
             dispatcher.utter_message(
-                text=f"The **{name}** is priced at **{price_str}**.\n\nWould you like to know more details about this product? I'm happy to help! 😊"
+                text=f"The **{name}** is priced at **{price_str}**.\n\nWould you like to know more details about this product? I'm happy to help! 😊",
+                metadata={"intent": intent}
             )
         else:
             dispatcher.utter_message(
-                text=f"The **{name}** is currently being updated with pricing. Please contact us directly for the most accurate quote! 📱"
+                text=f"The **{name}** is currently being updated with pricing. Please contact us directly for the most accurate quote! 📱",
+                metadata={"intent": intent}
             )
         
         return [SlotSet("last_product", product)]
@@ -1157,10 +1317,12 @@ class ActionCheckAvailability(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
         if not product_name:
-            dispatcher.utter_message(text="Which product would you like me to check stock for? 😊")
+            dispatcher.utter_message(text="Which product would you like me to check stock for? 😊", metadata={"intent": intent})
             return []
         
         logger.info(f"Checking availability for: {product_name}")
@@ -1173,7 +1335,8 @@ class ActionCheckAvailability(Action):
         
         if result.get("error") or not result.get("products"):
             dispatcher.utter_message(
-                text=f"Hmm, I couldn't find '{product_name}' in our inventory 😅\n\nWould you like to try another product, or should I suggest some alternatives?"
+                text=f"Hmm, I couldn't find '{product_name}' in our inventory 😅\n\nWould you like to try another product, or should I suggest some alternatives?",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1183,11 +1346,13 @@ class ActionCheckAvailability(Action):
         
         if stock > 0:
             dispatcher.utter_message(
-                text=f"Good news! **{name}** is in stock with {stock} units available 🎉\n\nWould you like to place an order, or need any advice first? 😊"
+                text=f"Good news! **{name}** is in stock with {stock} units available 🎉\n\nWould you like to place an order, or need any advice first? 😊",
+                metadata={"intent": intent}
             )
         else:
             dispatcher.utter_message(
-                text=f"Unfortunately, **{name}** is currently out of stock 😢\n\nWould you like me to notify you when it's back, or suggest similar items? 📱"
+                text=f"Unfortunately, **{name}** is currently out of stock 😢\n\nWould you like me to notify you when it's back, or suggest similar items? 📱",
+                metadata={"intent": intent}
             )
         
         return [SlotSet("last_product", product)]
@@ -1242,6 +1407,8 @@ class ActionGetProductDetails(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         user_message = tracker.latest_message.get("text", "")
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         product = None
@@ -1284,7 +1451,8 @@ class ActionGetProductDetails(Action):
                     product = products[0]
                 else:
                     dispatcher.utter_message(
-                        text=f"Hmm, I couldn't find '{product_name}' 😅\n\nCould you try a different name?"
+                        text=f"Hmm, I couldn't find '{product_name}' 😅\n\nCould you try a different name?",
+                        metadata={"intent": intent}
                     )
                     return []
         
@@ -1298,7 +1466,8 @@ class ActionGetProductDetails(Action):
         # Strategy 4: No context - show popular products
         if not product:
             dispatcher.utter_message(
-                text="Which product would you like to know about? 😊\n\nYou can say:\n• 'Show me the first one'\n• 'Tell me about the blue jacket'\n• 'Search for shirts'"
+                text="Which product would you like to know about? 😊\n\nYou can say:\n• 'Show me the first one'\n• 'Tell me about the blue jacket'\n• 'Search for shirts'",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1431,8 +1600,15 @@ class ActionGetProductDetails(Action):
         
         dispatcher.utter_message(
             text=response,
-            json_message={"custom": custom_data} if custom_data else None
+            metadata={"intent": intent}
         )
+        
+        if custom_data:
+            custom_data["intent"] = intent
+            dispatcher.utter_message(
+                json_message={"custom": custom_data},
+                metadata={"intent": intent}
+            )
         
         # Save current product and update slot
         return [
@@ -1458,6 +1634,8 @@ class ActionTrackOrder(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
         product_name = next(tracker.get_latest_entity_values("product_name"), None)
         
@@ -1472,7 +1650,8 @@ class ActionTrackOrder(Action):
         
         if not customer_id:
             dispatcher.utter_message(
-                text="To track your order, please sign in to your account first."
+                text="To track your order, please sign in to your account first.",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1492,7 +1671,8 @@ class ActionTrackOrder(Action):
             
             if result.get("error") or not result.get("data"):
                 dispatcher.utter_message(
-                    text=f"I couldn't find any orders with '{product_name}'. Please verify the product name or provide your order number."
+                    text=f"I couldn't find any orders with '{product_name}'. Please verify the product name or provide your order number.",
+                    metadata={"intent": intent}
                 )
                 return []
             
@@ -1507,7 +1687,7 @@ class ActionTrackOrder(Action):
                 for i, order in enumerate(orders[:3], 1):
                     response += f"{i}. Order #{order.get('order_number')} - {order.get('status')} ({order.get('date')})\n"
                 response += "\nWhich order would you like to track?"
-                dispatcher.utter_message(text=response)
+                dispatcher.utter_message(text=response, metadata={"intent": intent})
                 return []
         
         elif order_number:
@@ -1521,7 +1701,8 @@ class ActionTrackOrder(Action):
             
             if result.get("error") or not result.get("data"):
                 dispatcher.utter_message(
-                    text="I couldn't retrieve your orders. Please try again or provide a specific order number."
+                    text="Mình chưa hiểu lắm đơn hàng nào bạn muốn xem.\nBạn gửi mình mã đơn hàng nhé, mình kiểm tra liền cho bạn nè!",
+                    metadata={"intent": intent}
                 )
                 return []
             
@@ -1529,7 +1710,8 @@ class ActionTrackOrder(Action):
             
             if len(orders) == 0:
                 dispatcher.utter_message(
-                    text="You don't have any orders yet. Start shopping to place your first order! 🛍️"
+                    text="You don't have any orders yet. Start shopping to place your first order! 🛍️",
+                    metadata={"intent": intent}
                 )
                 return []
             
@@ -1559,7 +1741,7 @@ class ActionTrackOrder(Action):
             
             response += "💬 Reply with an order number to see details (e.g., '0000000001')"
             
-            dispatcher.utter_message(text=response)
+            dispatcher.utter_message(text=response, metadata={"intent": intent})
             return []
         
         # Get order details
@@ -1571,7 +1753,8 @@ class ActionTrackOrder(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text=f"Sorry, I couldn't find order {order_number}. Please verify and try again."
+                text=f"Xin lỗi, mình không tìm thấy đơn hàng này. Bạn kiểm tra lại mã đơn nhé.",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1615,22 +1798,58 @@ class ActionTrackOrder(Action):
         except (ValueError, TypeError):
             total_display = str(total_amount) if total_amount else "N/A"
         
-        response = f"📦 **Order #{order_number}**\n\n"
-        response += f"📊 **Status:** {status.title() if status != 'Unknown' else status}"
-        if payment_status:
-            response += f" | Payment: {payment_status.title()}"
-        response += "\n"
-        response += f"📅 **Placed on:** {created_at}\n"
-        response += f"💰 **Total:** {total_display}\n\n"
+        # Status-based message templates (Vietnamese)
+        status_lower = status.lower()
         
-        # Add tracking info if available
-        tracking_number = order.get("tracking_number")
-        if tracking_number:
-            response += f"🚚 **Tracking Number:** {tracking_number}\n\n"
+        if status_lower == "confirmed" or status_lower == "pending_fulfillment":
+            # Đã xác nhận - đang xử lý
+            response = f"Mình đã tìm thấy đơn hàng của bạn rồi nhé 😊\n"
+            response += f"Đơn #{order_number} hiện đang được shop xác nhận và chuẩn bị hàng.\n"
+            response += f"Dự kiến sẽ được giao trong 1–2 ngày tới.\n\n"
+            response += f"📅 Ngày đặt: {created_at}"
+            
+        elif status_lower == "shipping" or status_lower == "in_transit":
+            # Đang giao
+            response = f"Đơn hàng #{order_number} của bạn hiện đang trên đường giao đến bạn 🚚\n"
+            response += f"Dự kiến bạn sẽ nhận được trong hôm nay hoặc ngày mai nhé!\n\n"
+            
+            # Add tracking info if available
+            tracking_number = order.get("tracking_number")
+            if tracking_number:
+                response += f"📦 Mã vận đơn: {tracking_number}"
+            
+        elif status_lower == "delivered" or status_lower == "completed":
+            # Đã giao
+            response = f"Đơn hàng #{order_number} đã được giao thành công ✅\n"
+            response += f"Nếu bạn cần hỗ trợ đổi trả hay thêm thông tin, cứ nhắn mình nhé!\n\n"
+            response += f"📅 Ngày đặt: {created_at}"
+            
+        elif status_lower == "pending" or payment_status.lower() == "unpaid":
+            # Pending - chờ xử lý
+            response = f"Mình đã tìm thấy đơn #{order_number} của bạn.\n"
+            response += f"Hiện đơn đang chờ shop xác nhận và chuẩn bị hàng.\n"
+            response += f"Mình sẽ cập nhật cho bạn khi có thông tin giao hàng nhé!\n\n"
+            response += f"📅 Ngày đặt: {created_at}"
+            
+        elif status_lower == "cancelled":
+            # Đã hủy
+            response = f"Đơn hàng #{order_number} đã được hủy.\n\n"
+            response += f"📅 Ngày đặt: {created_at}\n"
+            response += f"Nếu bạn cần đặt lại hoặc cần hỗ trợ, cứ nhắn mình nhé!"
+            
+        else:
+            # Default fallback (generic status)
+            response = f"📦 Đơn hàng #{order_number}\n\n"
+            response += f"📊 Trạng thái: {status.title() if status != 'Unknown' else status}\n"
+            response += f"📅 Ngày đặt: {created_at}\n\n"
+            
+            tracking_number = order.get("tracking_number")
+            if tracking_number:
+                response += f"🚚 Mã vận đơn: {tracking_number}\n\n"
+            
+            response += "Bạn cần mình hỗ trợ gì thêm về đơn hàng này không?"
         
-        response += "Is there anything else you'd like to know about your order?"
-        
-        dispatcher.utter_message(text=response)
+        dispatcher.utter_message(text=response, metadata={"intent": intent})
         
         return [SlotSet("last_order", order)]
 
@@ -1674,9 +1893,11 @@ class ActionCancelOrder(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         customer_id = get_customer_id_from_tracker(tracker)
         if not customer_id:
-            dispatcher.utter_message(text="To cancel an order, please sign in first! 🔐")
+            dispatcher.utter_message(text="To cancel an order, please sign in first! 🔐", metadata={"intent": intent})
             return []
         
         # Get order number from entity or slot
@@ -1685,7 +1906,7 @@ class ActionCancelOrder(Action):
             order_number = tracker.get_slot("cancel_order_number")
         
         if not order_number:
-            dispatcher.utter_message(text="Which order would you like to cancel? Please provide the order number.")
+            dispatcher.utter_message(text="Which order would you like to cancel? Please provide the order number.", metadata={"intent": intent})
             return []
         
         # Check if we already have a cancel reason from previous turn
@@ -1706,7 +1927,8 @@ class ActionCancelOrder(Action):
                      f"• Delivery is too slow\n"
                      f"• Payment issue\n"
                      f"• Duplicate order\n"
-                     f"• Other reason"
+                     f"• Other reason",
+                metadata={"intent": intent}
             )
             return [
                 SlotSet("cancel_order_number", order_number),
@@ -1734,7 +1956,8 @@ class ActionCancelOrder(Action):
                 order_id = int(order_number)
             except (ValueError, TypeError):
                 dispatcher.utter_message(
-                    text=f"Invalid order number format. Please provide a valid order number like 0000000032."
+                    text=f"Invalid order number format. Please provide a valid order number like 0000000032.",
+                    metadata={"intent": intent}
                 )
                 return []
             
@@ -1752,7 +1975,8 @@ class ActionCancelOrder(Action):
                 # Successful cancellation
                 dispatcher.utter_message(
                     text=f"✅ Your order {order_number} has been successfully canceled.\n\n"
-                         f"If you need help placing a new order, feel free to let me know! 😊"
+                         f"If you need help placing a new order, feel free to let me know! 😊",
+                    metadata={"intent": intent}
                 )
                 return [
                     SlotSet("cancel_order_number", None),
@@ -1766,14 +1990,16 @@ class ActionCancelOrder(Action):
             
             if error_code == "ALREADY_CANCELLED":
                 dispatcher.utter_message(
-                    text=f"This order has already been canceled. ✅\n\nIs there anything else I can help you with?"
+                    text=f"This order has already been canceled. ✅\n\nIs there anything else I can help you with?",
+                    metadata={"intent": intent}
                 )
             elif error_code == "CANNOT_CANCEL_CONFIRMED":
                 dispatcher.utter_message(
                     text=f"Your order has been confirmed and is waiting for delivery. 📦\n\n"
                          f"At this stage, the order can no longer be canceled.\n\n"
                          f"💡 You can refuse the package upon delivery or request a return after receiving it, "
-                         f"according to our return policy."
+                         f"according to our return policy.",
+                    metadata={"intent": intent}
                 )
             elif error_code == "CANNOT_CANCEL_SHIPPING":
                 tracking = result.get("tracking_number", "")
@@ -1785,19 +2011,22 @@ class ActionCancelOrder(Action):
                     text=f"Your order is currently being shipped. 🚚{tracking_info}\n\n"
                          f"At this stage, cancellation is no longer possible.\n\n"
                          f"💡 A common option is to refuse the delivery when the courier arrives, "
-                         f"or initiate a return after the package is delivered."
+                         f"or initiate a return after the package is delivered.",
+                    metadata={"intent": intent}
                 )
             elif error_code == "CANNOT_CANCEL_DELIVERED":
                 dispatcher.utter_message(
                     text=f"This order has already been delivered. ✅\n\n"
                          f"Cancellation is no longer possible, but you may request a return or refund "
-                         f"according to our return policy if the product meets the conditions."
+                         f"according to our return policy if the product meets the conditions.",
+                    metadata={"intent": intent}
                 )
             else:
                 # Generic error
                 dispatcher.utter_message(
                     text=f"I couldn't cancel this order right now. {error_message}\n\n"
-                         f"Please contact our support team for assistance. 🙏"
+                         f"Please contact our support team for assistance. 🙏",
+                    metadata={"intent": intent}
                 )
             
             return [
@@ -1808,7 +2037,8 @@ class ActionCancelOrder(Action):
         except Exception as e:
             logger.error(f"❌ Exception in cancel order: {e}", exc_info=True)
             dispatcher.utter_message(
-                text="Oops! Something went wrong. Please try again or contact support! 🙏"
+                text="Oops! Something went wrong. Please try again or contact support! 🙏",
+                metadata={"intent": intent}
             )
             return [
                 SlotSet("cancel_order_number", None),
@@ -1849,6 +2079,8 @@ class ActionRequestHuman(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         logger.info("🤝 Customer requesting human agent")
         
         # Extract session_id from metadata
@@ -1856,7 +2088,7 @@ class ActionRequestHuman(Action):
         
         if not session_id:
             logger.error("❌ No session_id found in tracker")
-            dispatcher.utter_message(response="utter_request_human_error")
+            dispatcher.utter_message(response="utter_request_human_error", metadata={"intent": intent})
             return []
         
         logger.info(f"📋 Session ID: {session_id}")
@@ -1876,7 +2108,7 @@ class ActionRequestHuman(Action):
             return [ConversationPaused()]
         else:
             logger.error(f"❌ Handoff request failed for session {session_id}")
-            dispatcher.utter_message(response="utter_request_human_error")
+            dispatcher.utter_message(response="utter_request_human_error", metadata={"intent": intent})
             return []
     
     def _extract_session_id(self, tracker: Tracker) -> int:
@@ -1944,6 +2176,8 @@ class ActionGetShippingPolicy(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         logger.info("Fetching shipping policy")
         
         api_client = get_api_client()
@@ -1951,7 +2185,8 @@ class ActionGetShippingPolicy(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text="Shipping depends on your location within Vietnam:\n• Major Cities (Hanoi, HCMC, Da Nang): Typically 1-2 business days\n• Nationwide Delivery: Approximately 3-5 business days\n\nBest of all, we offer free shipping on all domestic orders!\n\nWe also ship to over 50 countries:\n• Asia (Thailand, Singapore, Malaysia, etc.): 5-7 business days for $8.99\n• Rest of the World: 10-14 business days for $15.99"
+                text="Shipping depends on your location within Vietnam:\n• Major Cities (Hanoi, HCMC, Da Nang): Typically 1-2 business days\n• Nationwide Delivery: Approximately 3-5 business days\n\nBest of all, we offer free shipping on all domestic orders!\n\nWe also ship to over 50 countries:\n• Asia (Thailand, Singapore, Malaysia, etc.): 5-7 business days for $8.99\n• Rest of the World: 10-14 business days for $15.99",
+                metadata={"intent": intent}
             )
             return []
         
@@ -1960,11 +2195,11 @@ class ActionGetShippingPolicy(Action):
         if content:
             # Truncate long content instead of using Gemini (avoid hallucination risk)
             if len(content) > 500:
-                dispatcher.utter_message(text=content[:500] + "...")
+                dispatcher.utter_message(text=content[:500] + "...", metadata={"intent": intent})
             else:
-                dispatcher.utter_message(text=content)
+                dispatcher.utter_message(text=content, metadata={"intent": intent})
         else:
-            dispatcher.utter_message(response="utter_default_shipping_policy")
+            dispatcher.utter_message(response="utter_default_shipping_policy", metadata={"intent": intent})
         
         return []
 
@@ -1982,6 +2217,8 @@ class ActionGetReturnPolicy(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         logger.info("Fetching return policy")
         
         api_client = get_api_client()
@@ -1989,16 +2226,17 @@ class ActionGetReturnPolicy(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text="Our policy is simple: You have 30 days for a full refund if the item is unworn/unwashed and in original condition. Want to start a return? Just type 'Start Return' and include your Order Number! We'll handle it from there.\n\nOnce we receive your returned item, the refund will be processed within 5-7 business days. (Shipping costs are non-refundable.)"
+                text="Our policy is simple: You have 30 days for a full refund if the item is unworn/unwashed and in original condition. Want to start a return? Just type 'Start Return' and include your Order Number! We'll handle it from there.\n\nOnce we receive your returned item, the refund will be processed within 5-7 business days. (Shipping costs are non-refundable.)",
+                metadata={"intent": intent}
             )
             return []
         
         content = result.get("data", {}).get("content", "")
         
         if content:
-            dispatcher.utter_message(text=content[:500] if len(content) > 500 else content)
+            dispatcher.utter_message(text=content[:500] if len(content) > 500 else content, metadata={"intent": intent})
         else:
-            dispatcher.utter_message(response="utter_default_return_policy")
+            dispatcher.utter_message(response="utter_default_return_policy", metadata={"intent": intent})
         
         return []
 
@@ -2016,8 +2254,11 @@ class ActionGetPaymentMethods(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         dispatcher.utter_message(
-            text="To make things convenient for you, LeCas accepts:\n• COD (Cash on Delivery) for domestic orders in Vietnam\n• VNPay for domestic orders in Vietnam\n• Major credit cards (Visa, Mastercard, Amex) for international purchases\n• PayPal for international purchases\n\nPayment options are indicated at checkout based on your location."
+            text="To make things convenient for you, LeCas accepts:\n• COD (Cash on Delivery) for domestic orders in Vietnam\n• VNPay for domestic orders in Vietnam\n• Major credit cards (Visa, Mastercard, Amex) for international purchases\n• PayPal for international purchases\n\nPayment options are indicated at checkout based on your location.",
+            metadata={"intent": intent}
         )
         
         return []
@@ -2036,8 +2277,11 @@ class ActionGetWarrantyPolicy(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         dispatcher.utter_message(
-            text="All our products come with a standard 1-year manufacturer warranty covering defects in materials and workmanship. Extended warranty options are available at checkout."
+            text="All our products come with a standard 1-year manufacturer warranty covering defects in materials and workmanship. Extended warranty options are available at checkout.",
+            metadata={"intent": intent}
         )
         
         return []
@@ -2060,6 +2304,8 @@ class ActionRecommendProducts(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         user_query = tracker.latest_message.get("text", "")
         
         # Search for popular/trending products
@@ -2068,7 +2314,8 @@ class ActionRecommendProducts(Action):
         
         if result.get("error") or not result.get("data"):
             dispatcher.utter_message(
-                text="I'd be happy to recommend products! Could you tell me what category you're interested in? (e.g., electronics, clothing, sports)"
+                text="I'd be happy to recommend products! Could you tell me what category you're interested in? (e.g., electronics, clothing, sports)",
+                metadata={"intent": intent}
             )
             return []
         
@@ -2091,14 +2338,21 @@ class ActionRecommendProducts(Action):
         # Send text + custom data for ProductCarousel
         dispatcher.utter_message(
             text="Here are some recommendations for you:",
-            json_message={
-                "type": "product_list",
-                "products": product_list
-            }
+            metadata={"intent": intent}
         )
         
         dispatcher.utter_message(
-            text="💡 Would you like to know more about any of these? 😊"
+            json_message={
+                "type": "product_list",
+                "products": product_list,
+                "intent": intent
+            },
+            metadata={"intent": intent}
+        )
+        
+        dispatcher.utter_message(
+            text="💡 Would you like to know more about any of these? 😊",
+            metadata={"intent": intent}
         )
         
         return [SlotSet("last_products", products)]
@@ -2117,12 +2371,15 @@ class ActionCompareProducts(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         # Get product names from entities
         product_names = list(tracker.get_latest_entity_values("product_name"))
         
         if len(product_names) < 2:
             dispatcher.utter_message(
-                text="Please specify which products you'd like to compare. For example: 'Compare iPhone 15 and Samsung S24'"
+                text="Please specify which products you'd like to compare. For example: 'Compare iPhone 15 and Samsung S24'",
+                metadata={"intent": intent}
             )
             return []
         
@@ -2137,7 +2394,8 @@ class ActionCompareProducts(Action):
         
         if len(products) < 2:
             dispatcher.utter_message(
-                text="Sorry, I couldn't find both products. Please verify the product names."
+                text="Sorry, I couldn't find both products. Please verify the product names.",
+                metadata={"intent": intent}
             )
             return []
         
@@ -2157,7 +2415,7 @@ class ActionCompareProducts(Action):
             response += f"📂 Category: {p2.get('category_name')}\n"
         response += "\nWhich one would you like to know more about? 😊"
         
-        dispatcher.utter_message(text=response)
+        dispatcher.utter_message(text=response, metadata={"intent": intent})
         
         return []
 
@@ -2204,7 +2462,9 @@ class ActionAddToCart(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        logger.info("🛒 Add to cart requested - DISABLED (advisory mode only)")
+        intent = get_intent_from_tracker(tracker)
+        
+        logger.info("🛍️ Add to cart requested - DISABLED (advisory mode only)")
         
         dispatcher.utter_message(
             text="I'm here to help you find and explore products! 😊\n\n"
@@ -2214,7 +2474,8 @@ class ActionAddToCart(Action):
                  "• Select size and color\n"
                  "• Add to cart\n"
                  "• Read reviews\n\n"
-                 "Would you like me to help you find something specific?"
+                 "Would you like me to help you find something specific?",
+            metadata={"intent": intent}
         )
         
         return [
@@ -2222,7 +2483,7 @@ class ActionAddToCart(Action):
             SlotSet("cart_color", None),
             SlotSet("cart_quantity", 1)
         ]
-    
+
 
 class ActionViewCart(Action):
     """View current cart contents"""
@@ -2237,14 +2498,17 @@ class ActionViewCart(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
-        logger.info("🛒 View cart requested - DISABLED (advisory mode only)")
+        intent = get_intent_from_tracker(tracker)
+        
+        logger.info("🛍️ View cart requested - DISABLED (advisory mode only)")
         
         dispatcher.utter_message(
             text="I can help you find products, but I don't manage shopping carts! 😊\n\n"
                  "To view or manage your cart:\n"
-                 "• Click the cart icon 🛒 in the top navigation\n"
+                 "• Click the cart icon 🛍️ in the top navigation\n"
                  "• Or visit the cart page directly on our website\n\n"
-                 "Would you like me to help you find more products instead?"
+                 "Would you like me to help you find more products instead?",
+            metadata={"intent": intent}
         )
         
         return []
@@ -2271,17 +2535,19 @@ class ActionAskGemini(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_message = tracker.latest_message.get('text', '')
-        intent = tracker.latest_message.get('intent', {}).get('name', 'unknown')
+        intent_name = tracker.latest_message.get('intent', {}).get('name', 'unknown')
         confidence = tracker.latest_message.get('intent', {}).get('confidence', 0.0)
+        
+        intent = get_intent_from_tracker(tracker)
         
         if not user_message:
             dispatcher.utter_message(
                 text="Could you repeat that? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
-        logger.info(f"🤖 ActionAskGemini: intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
+        logger.info(f"🤖 ActionAskGemini: intent={intent_name}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
         
         # Get Gemini client (Singleton)
         gemini = get_gemini_client()
@@ -2290,7 +2556,7 @@ class ActionAskGemini(Action):
             logger.warning("⚠️ Gemini not available")
             dispatcher.utter_message(
                 text="I can help with product searches, sizing, and style advice! What would you like to know? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
@@ -2347,13 +2613,13 @@ Provide helpful, friendly advice within your allowed scope. Be concise (2-3 sent
             )
             dispatcher.utter_message(
                 text="Can I help with anything else? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
         else:
             logger.warning(f"⚠️ Gemini failed to respond")
             dispatcher.utter_message(
                 text="I'm here to help with products, styling, and fashion advice! What would you like to know? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
         
         return []
@@ -2376,17 +2642,19 @@ class ActionAskGeminiWithHistory(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_message = tracker.latest_message.get('text', '')
-        intent = tracker.latest_message.get('intent', {}).get('name', 'unknown')
+        intent_name = tracker.latest_message.get('intent', {}).get('name', 'unknown')
         confidence = tracker.latest_message.get('intent', {}).get('confidence', 0.0)
+        
+        intent = get_intent_from_tracker(tracker)
         
         if not user_message:
             dispatcher.utter_message(
                 text="I didn't catch that. Could you please repeat? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
-        logger.info(f"🤖 ActionAskGeminiWithHistory: intent={intent}, confidence={confidence:.2f}")
+        logger.info(f"🤖 ActionAskGeminiWithHistory: intent={intent_name}, confidence={confidence:.2f}")
         
         # Get Gemini client
         gemini_client = get_gemini_client()
@@ -2395,7 +2663,7 @@ class ActionAskGeminiWithHistory(Action):
             logger.warning("⚠️ Gemini is disabled")
             dispatcher.utter_message(
                 text="I can help you with various questions! What would you like to know? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
@@ -2419,7 +2687,7 @@ class ActionAskGeminiWithHistory(Action):
             logger.warning("⚠️ No conversation history found")
             dispatcher.utter_message(
                 text="Let's start fresh! What would you like to know? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
             return []
         
@@ -2460,7 +2728,7 @@ Provide helpful advice based on the conversation context. Be concise (2-3 senten
             api_client = get_api_client()
             api_client.log_gemini_call(
                 user_message=user_message,
-                rasa_intent=intent,
+                rasa_intent=intent_name,
                 rasa_confidence=confidence,
                 gemini_response=safe_response,
                 response_time_ms=response_time_ms,
@@ -2478,14 +2746,15 @@ Provide helpful advice based on the conversation context. Be concise (2-3 senten
                     "source": "gemini_ai",
                     "is_validated": is_valid,
                     "response_time_ms": response_time_ms,
-                    "with_history": True
+                    "with_history": True,
+                    "intent": intent
                 }
             )
         else:
             logger.error(f"❌ Gemini with history failed: {result.get('error')}")
             dispatcher.utter_message(
                 text="I'm here to help! What would you like to know? 😊",
-                metadata={"source": "rasa_template"}
+                metadata={"source": "rasa_template", "intent": intent}
             )
         
         return []
@@ -2557,14 +2826,16 @@ class ActionFallback(Action):
     ) -> List[Dict[Text, Any]]:
         
         user_message = tracker.latest_message.get("text", "")
-        intent = tracker.latest_message.get("intent", {}).get("name", "unknown")
+        intent_name = tracker.latest_message.get("intent", {}).get("name", "unknown")
         confidence = tracker.latest_message.get("intent", {}).get("confidence", 0.0)
+        
+        intent = get_intent_from_tracker(tracker)
         
         # Track consecutive fallbacks
         fallback_count = tracker.get_slot("fallback_count") or 0
         fallback_count += 1
         
-        logger.info(f"⚠️ Fallback triggered (#{fallback_count}): intent={intent}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
+        logger.info(f"⚠️ Fallback triggered (#{fallback_count}): intent={intent_name}, confidence={confidence:.2f}, message='{user_message[:50]}...'")
         
         # Check if query is out-of-scope
         if self._is_out_of_scope(user_message):
@@ -2576,7 +2847,7 @@ class ActionFallback(Action):
                      "• Order tracking & support 📦\n"
                      "• Shipping & return policies 🚚\n\n"
                      "For other topics, please consult the appropriate service! 😊",
-                metadata={"source": "rasa_template", "is_fallback": True, "out_of_scope": True}
+                metadata={"source": "rasa_template", "is_fallback": True, "out_of_scope": True, "intent": intent}
             )
             return [SlotSet("fallback_count", 0)]  # Reset counter
         
@@ -2587,7 +2858,7 @@ class ActionFallback(Action):
                 text="I'm having trouble understanding your request. 😅\n\n"
                      "Would you like me to connect you with a human support agent who can help? "
                      "Just say 'I want to speak to support' or 'Contact customer service'. 🙋",
-                metadata={"source": "rasa_template", "is_fallback": True, "escalation_offered": True}
+                metadata={"source": "rasa_template", "is_fallback": True, "escalation_offered": True, "intent": intent}
             )
             return [SlotSet("fallback_count", fallback_count)]
         
@@ -2624,7 +2895,7 @@ Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
                 api_client = get_api_client()
                 api_client.log_gemini_call(
                     user_message=user_message,
-                    rasa_intent=intent,
+                    rasa_intent=intent_name,
                     rasa_confidence=confidence,
                     gemini_response=safe_response,
                     response_time_ms=response_time_ms,
@@ -2649,7 +2920,7 @@ Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
                 )
                 dispatcher.utter_message(
                     text="Can I help you with anything else? 😊",
-                    metadata={"source": "rasa_template"}
+                    metadata={"source": "rasa_template", "intent": intent}
                 )
                 return [SlotSet("fallback_count", 0)]  # Reset counter on success
         
@@ -2664,7 +2935,7 @@ Provide helpful advice within your allowed scope. Be concise (2-3 sentences)."""
                  "• Shipping and return policies\n"
                  "• Promotions & discounts\n\n"
                  "What can I help you with? 👕",
-            metadata={"source": "rasa_template", "is_fallback": True}
+            metadata={"source": "rasa_template", "is_fallback": True, "intent": intent}
         )
         
         return [SlotSet("fallback_count", fallback_count)]
@@ -2682,6 +2953,8 @@ class ActionCreateSupportTicket(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        
+        intent = get_intent_from_tracker(tracker)
         
         user_message = tracker.latest_message.get("text", "")
         
@@ -2708,12 +2981,14 @@ class ActionCreateSupportTicket(Action):
         
         if result.get("error"):
             dispatcher.utter_message(
-                text="I apologize, but I'm having trouble creating a support ticket right now. Please contact us directly at support@yourstore.com"
+                text="I apologize, but I'm having trouble creating a support ticket right now. Please contact us directly at support@yourstore.com",
+                metadata={"intent": intent}
             )
         else:
             ticket_id = result.get("data", {}).get("id", "N/A")
             dispatcher.utter_message(
-                text=f"I've created a support ticket (#{ticket_id}) for you. Our team will reach out within 24 hours. Is there anything else I can help with in the meantime?"
+                text=f"I've created a support ticket (#{ticket_id}) for you. Our team will reach out within 24 hours. Is there anything else I can help with in the meantime?",
+                metadata={"intent": intent}
             )
         
         return []
@@ -2736,8 +3011,11 @@ class ActionDefaultAskAffirmation(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         dispatcher.utter_message(
-            text="I want to make sure I understand correctly. Can you please confirm or rephrase your request?"
+            text="I want to make sure I understand correctly. Can you please confirm or rephrase your request?",
+            metadata={"intent": intent}
         )
         
         return []

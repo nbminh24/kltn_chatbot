@@ -33,6 +33,16 @@ def get_jwt_token_from_tracker(tracker: Tracker) -> str:
     return metadata.get("user_jwt_token") or tracker.get_slot("user_jwt_token")
 
 
+def get_intent_from_tracker(tracker: Tracker) -> str:
+    """Extract intent name from tracker for analytics tracking"""
+    try:
+        intent = tracker.latest_message.get('intent', {}).get('name')
+        return intent
+    except Exception as e:
+        logger.warning(f"⚠️ Could not extract intent: {e}")
+        return None
+
+
 class ActionGetDeliveryStatus(Action):
     """
     Get delivery status and estimated delivery date for an order.
@@ -59,6 +69,8 @@ class ActionGetDeliveryStatus(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         
+        intent = get_intent_from_tracker(tracker)
+        
         # Extract order number and authentication
         order_number = next(tracker.get_latest_entity_values("order_number"), None)
         customer_id = get_customer_id_from_tracker(tracker)
@@ -69,14 +81,16 @@ class ActionGetDeliveryStatus(Action):
         # Require authentication
         if not customer_id or not user_token:
             dispatcher.utter_message(
-                text="To check delivery status, please sign in to your account first."
+                text="To check delivery status, please sign in to your account first.",
+                metadata={"intent": intent}
             )
             return []
         
         # Require order number
         if not order_number:
             dispatcher.utter_message(
-                text="Please provide your order number so I can check the delivery status.\n\nExample: \"Check delivery for order 0000000032\""
+                text="Please provide your order number so I can check the delivery status.\n\nExample: \"Check delivery for order 0000000032\"",
+                metadata={"intent": intent}
             )
             return []
         
@@ -89,7 +103,8 @@ class ActionGetDeliveryStatus(Action):
         except Exception as e:
             logger.error(f"Failed to get delivery estimation: {e}")
             dispatcher.utter_message(
-                text="Sorry, I couldn't retrieve delivery information at the moment. Please try again later."
+                text="Sorry, I couldn't retrieve delivery information at the moment. Please try again later.",
+                metadata={"intent": intent}
             )
             return []
         
@@ -98,11 +113,13 @@ class ActionGetDeliveryStatus(Action):
             error_msg = result.get("message", "")
             if "not found" in error_msg.lower():
                 dispatcher.utter_message(
-                    text=f"Sorry, I couldn't find delivery information for order {order_number}. Please verify your order number."
+                    text=f"Sorry, I couldn't find delivery information for order {order_number}. Please verify your order number.",
+                    metadata={"intent": intent}
                 )
             else:
                 dispatcher.utter_message(
-                    text="Sorry, I couldn't retrieve your order information. Please try again."
+                    text="Sorry, I couldn't retrieve your order information. Please try again.",
+                    metadata={"intent": intent}
                 )
             return []
         
@@ -194,5 +211,5 @@ class ActionGetDeliveryStatus(Action):
             
             response += "For detailed information, please contact our support team."
         
-        dispatcher.utter_message(text=response)
+        dispatcher.utter_message(text=response, metadata={"intent": intent})
         return []
